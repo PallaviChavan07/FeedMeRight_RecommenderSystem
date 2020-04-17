@@ -11,6 +11,7 @@ __pycache__/
 /code/.idea/
 .idea/
 /data/original/
+/data/codegenerated/
 
 # Distribution / packaging
 .Python
