@@ -1,0 +1,29 @@
+# ## Source - https://towardsdatascience.com/evaluating-a-real-life-recommender-system-error-based-and-ranking-based-84708e3285b
+# ## Notebook Code Reference - https://github.com/susanli2016/Machine-Learning-with-Python/blob/master/Movielens%20Recommender%20Metrics.ipynb
+
+from surprise import SVDpp
+from surprise import Reader
+from surprise import Dataset
+from surprise.model_selection import train_test_split
+from code import Evaluators, Recipe_Reco_SingleUser, Top5_Recipe_Reco_PerUser
+
+def SVDplusplus(recipe_df, train_rating_df, pd):
+    print("\n###### Compute SVDplusplus ######")
+    df = pd.merge(recipe_df, train_rating_df, on='recipe_id', how='inner')
+    reader = Reader(rating_scale=(1, 5))
+    data = Dataset.load_from_df(df[['user_id', 'recipe_name', 'rating']], reader)
+    trainSet, testSet = train_test_split(data, test_size=.2, random_state=0)
+
+    algo = SVDpp(random_state=0)
+    algo.fit(trainSet)
+    predictions = algo.test(testSet)
+
+    print("RMSE: ", Evaluators.RMSE(predictions))
+    print("MAE: ", Evaluators.MAE(predictions))
+
+    #Display Results
+    #Top5_Recipe_Reco_PerUser.DisplayResults(predictionsKNN)
+    #Recipe_Reco_SingleUser.GetSingleUserRecipeReco(df, algo, 39)
+
+
+

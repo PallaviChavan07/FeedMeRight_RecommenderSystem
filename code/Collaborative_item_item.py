@@ -5,11 +5,9 @@
 from surprise import KNNBasic
 from surprise import Reader
 from surprise import Dataset
-from surprise import accuracy
 from surprise.model_selection import train_test_split
 from surprise.model_selection import split
-import Top5_Recipe_Reco_PerUser
-import Recipe_Reco_SingleUser
+from code import Evaluators, Recipe_Reco_SingleUser, Top5_Recipe_Reco_PerUser
 
 def ComputeCollaborativeFiltering_Item_Item(recipe_df, train_rating_df, pd):
     print("\n###### ComputeCollaborativeFiltering_Item_Item ######")
@@ -18,22 +16,38 @@ def ComputeCollaborativeFiltering_Item_Item(recipe_df, train_rating_df, pd):
     data = Dataset.load_from_df(df[['user_id', 'recipe_id', 'rating']], reader)
     trainSet, testSet = train_test_split(data, test_size=.2, random_state=0)
 
-    # split data into folds.
-    kSplit = split.KFold(n_splits=5, shuffle=True)
-
     # compute  similarities between items
     sim_options = {'name': 'cosine', 'user_based': False}
 
-    collabKNN = KNNBasic(k=40, sim_options=sim_options)
-    rmseKNN = []
+    #Method 1:
+    algo = KNNBasic(k=40, sim_options=sim_options)
+    algo.fit(trainSet)
+    predictions = algo.test(testSet)
 
-    for trainset, testset in kSplit.split(data):  # iterate through the folds.
-        collabKNN.fit(trainset)
-        predictionsKNN = collabKNN.test(testset)
-        rmseKNN.append(accuracy.rmse(predictionsKNN, verbose=True))  # get root means squared error
-    print(rmseKNN)
+    print("RMSE: ", Evaluators.RMSE(predictions))
+    print("MAE: ", Evaluators.MAE(predictions))
 
     #Display Results
-    # Top5_Recipe_Reco_PerUser.DisplayResults(predictionsKNN)
-    Recipe_Reco_SingleUser.GetSingleUserRecipeReco(df, collabKNN, 39)
+    #Top5_Recipe_Reco_PerUser.DisplayResults(predictionsKNN)
+    #Recipe_Reco_SingleUser.GetSingleUserRecipeReco(df, algo, 39)
+
+    #Method 2:
+    # split data into folds.
+    #kSplit = split.KFold(n_splits=5, shuffle=True)
+    #algo = KNNBasic(k=40, sim_options=sim_options)
+    #rmseKNN = []
+    #maeKNN = []
+
+    #for trainset, testset in kSplit.split(data):  # iterate through the folds.
+    #    algo.fit(trainset)
+    #    predictionsKNN = algo.test(testset)
+    #    rmseKNN.append(Evaluators.RMSE(predictionsKNN))
+    #    maeKNN.append(Evaluators.MAE(predictionsKNN))
+
+    #print("RMSE: ", rmseKNN)
+    #print("MAE: ", maeKNN)
+
+    #Display Results
+    #Top5_Recipe_Reco_PerUser.DisplayResults(predictionsKNN)
+    #Recipe_Reco_SingleUser.GetSingleUserRecipeReco(df, algo, 39)
 
