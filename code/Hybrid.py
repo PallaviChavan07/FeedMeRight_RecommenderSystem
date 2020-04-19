@@ -1,106 +1,123 @@
+#https://www.kaggle.com/robottums/hybrid-recommender-systems-with-surprise
 import surprise
-from surprise import accuracy
-import numpy as np # linear algebra
-import pandas as pd # data processing, CSV file I/O (e.g. pd.read_csv)
-from sklearn.model_selection import train_test_split
+import numpy as np
 import matplotlib.pyplot as plt
+from surprise import KNNBasic, SVD, CoClustering, SlopeOne, Reader, Dataset, accuracy
+from surprise.model_selection import split
+from sklearn.model_selection import train_test_split
 
-#raw=pd.read_csv('../data/small_10k/core-data-train_rating.csv')
-raw=pd.read_csv('../data/original/ratings.csv')
-raw.drop_duplicates(inplace=True)
-print('we have',raw.shape[0], 'ratings')
-print('the number of unique users we have is:', len(raw.user_id.unique()))
-print('the number of unique books we have is:', len(raw.book_id.unique()))
-print("The median user rated %d books."%raw.user_id.value_counts().median())
-print('The max rating is: %d'%raw.rating.max(),"the min rating is: %d"%raw.rating.min())
-raw.head()
-
-#swapping columns
-raw=raw[['user_id','book_id','rating']]
-raw.columns = ['n_users','n_items','rating']
-
-rawTrain,rawholdout = train_test_split(raw, test_size=0.2)
-# when importing from a DF, you only need to specify the scale of the ratings.
-reader = surprise.Reader(rating_scale=(1,5))
-#into surprise:
-data = surprise.Dataset.load_from_df(rawTrain,reader)
-holdout = surprise.Dataset.load_from_df(rawholdout,reader)
-
-# split data into folds.
-kSplit = surprise.model_selection.split.KFold(n_splits=10, shuffle=True)
-sim_options = {'name': 'cosine', 'user_based': False}
-collabKNN = surprise.KNNBasic(k=40,sim_options=sim_options,verbose=False) #try removing sim_options. You'll find memory errors.
-rmseKNN = []
-for trainset, testset in kSplit.split(data): #iterate through the folds.
-    collabKNN.fit(trainset)
-    predictionsKNN = collabKNN.test(testset)
-    rmseKNN.append(accuracy.rmse(predictionsKNN,verbose=False))#get root means squared error
-
-rmseSVD = []
-funkSVD = surprise.prediction_algorithms.matrix_factorization.SVD(n_factors=30,n_epochs=10,biased=True)
-min_error = 1
-for trainset, testset in kSplit.split(data): #iterate through the folds.
-    funkSVD.fit(trainset)
-    predictionsSVD = funkSVD.test(testset)
-    rmseSVD.append(accuracy.rmse(predictionsSVD,verbose=False))#get root means squared error
-
-rmseCo = []
-coClus = surprise.prediction_algorithms.co_clustering.CoClustering(n_cltr_u=4,n_cltr_i=4,n_epochs=25)
-for trainset, testset in kSplit.split(data): #iterate through the folds.
-    coClus.fit(trainset)
-    predictionsCoClus = coClus.test(testset)
-    rmseCo.append(accuracy.rmse(predictionsCoClus,verbose=False))#get root means squared error
-
-rmseSlope = []
-slopeOne = surprise.prediction_algorithms.slope_one.SlopeOne()
-for trainset, testset in kSplit.split(data): #iterate through the folds.
-    slopeOne.fit(trainset)
-    predictionsSlope = slopeOne.test(testset)
-    rmseSlope.append(accuracy.rmse(predictionsSlope,verbose=False))#get root means squared error
-
-
-
-class Hybrid(surprise.AlgoBase):
-    def __init__(self, epochs, learning_rate, num_models):
-        self.alpha = np.array([1 / len(num_models)] * len(num_models))
+class HybridAlgorithm(surprise.AlgoBase):
+    def __init__(self, epochs, learning_rate, num_models, knnbasic, svd, coclus, slopeone):
+        surprise.AlgoBase.__init__(self)
+        self.alpha = np.array([1 / num_models] * num_models)
         self.epochs = epochs
         self.learning_rate = learning_rate
+        self.knnbasic = knnbasic
+        self.svd = svd
+        self.coclus = coclus
+        self.slopeone = slopeone
 
     def fit(self, holdout):
+        surprise.AlgoBase.fit(self, trainset=holdout.build_full_trainset())
         holdout = holdout.build_full_trainset().build_testset()
         for epoch in range(self.epochs):
-            predictions = np.array([collabKNN.test(holdout), funkSVD.test(holdout), coClus.test(holdout), slopeOne.test(holdout)])
-            print(predictions)
-            rmseGradient = [surprise.accuracy.rmse(prediction) for prediction in predictions]
-            newalpha = self.alpha - self.learning_rate * rmseGradient
+            rmseGradient = []
+            prediction = self.knnbasic.test(holdout)
+            rmseGradient.append(accuracy.rmse(prediction, verbose=False) * self.learning_rate)
+            prediction = self.svd.test(holdout)
+            rmseGradient.append(accuracy.rmse(prediction, verbose=False) * self.learning_rate)
+            prediction = self.coclus.test(holdout)
+            rmseGradient.append(accuracy.rmse(prediction, verbose=False) * self.learning_rate)
+            prediction = self.slopeone.test(holdout)
+            rmseGradient.append(accuracy.rmse(prediction, verbose=False) * self.learning_rate)
             # convergence check:
-            if newalpha - self.alpha < 0.001:
+            newalpha = self.alpha - rmseGradient
+            if (newalpha - self.alpha < 0.001).all():
                 break
             self.alpha = newalpha
+        return self
 
     def estimate(self, u, i):
         if not (self.trainset.knows_user(u) and self.trainset.knows_item(i)):
             raise surprise.PredictionImpossible('User and/or item is unkown.')
-        algoResults = np.array([collabKNN.predict(u, i), funkSVD.predict(u, i), coClus.predict(u, i), slopeOne.predict(u, i)])
+        #remove string data from last column
+        algoResults = np.array([self.knnbasic.predict(u, i)[:-1], self.svd.predict(u, i)[:-1],
+                                self.coclus.predict(u, i)[:-1], self.slopeone.predict(u, i)[:-1]])
+        # replace none object type by 0 if true rating is None
+        algoResults = np.where(algoResults == None, 0, algoResults)
         return np.sum(np.dot(self.alpha, algoResults))
 
+def ComputeHybrid(recipe_df, train_rating_df, pd):
+    print("\n###### Compute Hybrid ######")
+    df = pd.merge(recipe_df, train_rating_df, on='recipe_id', how='inner')
 
-hybrid = Hybrid(epochs=10,learning_rate=0.05,num_models={1,2,3,4})
-hybrid.fit(holdout)
-rmseHyb = []
-for trainset, testset in kSplit.split(data): #iterate through the folds.
-    predhybrid = hybrid.test(testset)
-    rmseHyb.append(accuracy.rmse(predhybrid))
+    # swapping columns
+    df = df[['user_id', 'recipe_id', 'rating']]
+    df.columns = ['n_users', 'n_items', 'rating']
 
-compiledPredictions = [predictionsKNN, predictionsSVD, predictionsCoClus, predictionsSlope, predhybrid]
-for prediction in compiledPredictions:
-    modelPrediction = plt.plot(rmseKNN,label='knn')
-    modelPrediction = plt.plot(rmseSVD,label='svd')
-    modelPrediction = plt.plot(rmseCo,label='cluster')
-    modelPrediction = plt.plot(rmseSlope,label='slope')
-    modelPrediction = plt.plot(rmseHyb, label='Hybrid')
-    modelPrediction = plt.xlabel('folds')
-    modelPrediction = plt.ylabel('accuracy')
-    plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
+    # need sklearn for this split ONLY
+    rawTrain, rawholdout = train_test_split(df, test_size=0.2)
+    # when importing from a DF, you only need to specify the scale of the ratings.
+    reader = Reader(rating_scale=(1, 5))
+    data = Dataset.load_from_df(rawTrain, reader)
+    holdout = Dataset.load_from_df(rawholdout, reader)
 
-plt.show()
+    # split data into folds.
+    kSplit = split.KFold(n_splits=10, shuffle=True)
+    sim_options = {'name': 'cosine', 'user_based': False}
+    # errors on removing sim_options.
+    knnbasic = KNNBasic(sim_options=sim_options, verbose=False)
+    rmseKNN = []
+    for trainset, testset in kSplit.split(data):  # iterate through the folds.
+        knnbasic.fit(trainset)
+        predictionsKNN = knnbasic.test(testset)
+        rmseKNN.append(accuracy.rmse(predictionsKNN, verbose=False))  # get root means squared error
+
+    rmseSVD = []
+    svd = SVD()
+    for trainset, testset in kSplit.split(data):  # iterate through the folds.
+        svd.fit(trainset)
+        predictionsSVD = svd.test(testset)
+        rmseSVD.append(accuracy.rmse(predictionsSVD, verbose=False))  # get root means squared error
+
+    rmseCo = []
+    coclus = CoClustering()
+    for trainset, testset in kSplit.split(data):  # iterate through the folds.
+        coclus.fit(trainset)
+        predictionsCoClus = coclus.test(testset)
+        rmseCo.append(accuracy.rmse(predictionsCoClus, verbose=False))  # get root means squared error
+
+    rmseSlope = []
+    slopeone = SlopeOne()
+    for trainset, testset in kSplit.split(data):  # iterate through the folds.
+        slopeone.fit(trainset)
+        predictionsSlope = slopeone.test(testset)
+        rmseSlope.append(accuracy.rmse(predictionsSlope, verbose=False))  # get root means squared error
+
+    hybrid = HybridAlgorithm(epochs=20, learning_rate=0.05, num_models=4, knnbasic=knnbasic, svd=svd, coclus=coclus, slopeone=slopeone)
+    hybrid.fit(holdout)
+    rmseHybrid = []
+    for trainset, testset in kSplit.split(data):  # iterate through the folds.
+        predictionsHybrid = hybrid.test(testset)
+        rmseHybrid.append(accuracy.rmse(predictionsHybrid, verbose=False))  # get root means squared error
+
+    PredArray = [predictionsKNN, predictionsSVD, predictionsCoClus, predictionsSlope, predictionsHybrid]
+    DisplayPlot(PredArray, rmseKNN, rmseSVD, rmseCo, rmseSlope, rmseHybrid)
+
+def DisplayPlot(PredArray, rmseKNN, rmseSVD, rmseCo, rmseSlope, rmseHybrid):
+    print("rmseKNN= ", rmseKNN)
+    print("rmseSVD= ", rmseSVD)
+    print("rmseCo= ", rmseCo)
+    print("rmseSlope= ", rmseSlope)
+    print("rmseHybrid= ", rmseHybrid)
+    for pred in PredArray:
+        plt.plot(rmseKNN, label='knn', color='r')
+        plt.plot(rmseSVD, label='svd', color='g')
+        plt.plot(rmseCo, label='cluster', color='b')
+        plt.plot(rmseSlope, label='slope', color='c')
+        plt.plot(rmseHybrid, label='Hybrid', color='y', linestyle='--')
+
+    plt.xlabel('folds (i.e. each computed pred and rmse)')
+    plt.ylabel('accuracy (rmse value)')
+    plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.5)
+    plt.show()

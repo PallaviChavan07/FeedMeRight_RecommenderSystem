@@ -7,6 +7,7 @@ import code.SVD_MatrixFactorization as svd_mf
 import code.SVDplusplus as svdpp
 import code.SlopeOne as slopeone
 import code.CoClustering as coclust
+import code.Hybrid as hyd
 
 #Read Data
 recipe_df = pd.read_csv('../data/small_10k/export_rated_recipes_set.csv')
@@ -20,7 +21,7 @@ print('the number of unique users we have is:', len(train_rating_df.user_id.uniq
 print('the number of unique recipes we have is:', len(train_rating_df.recipe_id.unique()))
 print("The median user rated %d books."%train_rating_df.user_id.value_counts().median())
 print('The max rating is: %d'%train_rating_df.rating.max(),"and the min rating is: %d"%train_rating_df.rating.min())
-print(train_rating_df.head())
+#print(train_rating_df.head())
 
 benchmark = []
 #cb.ComputeContentBasedFiltering(recipe_df, train_rating_df, pd)
@@ -38,3 +39,7 @@ pd.set_option("display.max_rows", None, "display.max_columns", None)
 results = pd.DataFrame.from_records(benchmark, exclude=['MSE', 'FCP'], columns=['RMSE', 'MAE', 'MSE', 'FCP', 'PrecisionAt10', 'RecallAt10'],
                                     index=['NormalPredictor', 'KNNBasic_Item_Item', 'KNNWithMeans_Item_Item', 'KNNBasic_User_User', 'KNNWithMeans_Item_Item', 'SVD', 'SVD++', 'SlopeOne', 'CoClustering'])
 print(results)
+
+
+#hybrid
+hyd.ComputeHybrid(recipe_df, train_rating_df, pd)
