@@ -3,13 +3,14 @@
 
 ## Collaborative filtering based on item item similarity
 from surprise import KNNBasic
+from surprise import KNNWithMeans
 from surprise import Reader
 from surprise import Dataset
 from surprise.model_selection import train_test_split
 from surprise.model_selection import split
 from code import Evaluators, Recipe_Reco_SingleUser, Top5_Recipe_Reco_PerUser
 
-def ComputeCollaborativeFiltering_Item_Item(recipe_df, train_rating_df, pd, benchmark):
+def ComputeCollaborativeFiltering_Item_Item(recipe_df, train_rating_df, pd, benchmark, knnmeans=False):
     print("\n###### Compute CollaborativeFiltering_Item_Item ######")
     df = pd.merge(recipe_df, train_rating_df, on='recipe_id', how='inner')
     reader = Reader(rating_scale=(1, 5))
@@ -19,8 +20,10 @@ def ComputeCollaborativeFiltering_Item_Item(recipe_df, train_rating_df, pd, benc
     # compute  similarities between items
     sim_options = {'name': 'cosine', 'user_based': False}
 
-    #Method 1:
-    algo = KNNBasic(k=40, sim_options=sim_options, verbose=False)
+    if knnmeans:
+        algo = KNNWithMeans(sim_options=sim_options, verbose=False)
+    else:
+        algo = KNNBasic(sim_options=sim_options, verbose=False)
     algo.fit(trainSet)
     predictions = algo.test(testSet)
 
@@ -30,7 +33,7 @@ def ComputeCollaborativeFiltering_Item_Item(recipe_df, train_rating_df, pd, benc
     #Top5_Recipe_Reco_PerUser.DisplayResults(predictionsKNN)
     #Recipe_Reco_SingleUser.GetSingleUserRecipeReco(df, algo, 39)
 
-    #Method 2:
+    #New Method:
     # split data into folds.
     #kSplit = split.KFold(n_splits=5, shuffle=True)
     #algo = KNNBasic(k=40, sim_options=sim_options)
