@@ -9,8 +9,8 @@ from surprise.model_selection import train_test_split
 from surprise.model_selection import split
 from code import Evaluators, Recipe_Reco_SingleUser, Top5_Recipe_Reco_PerUser
 
-def ComputeCollaborativeFiltering_User_User(recipe_df, train_rating_df, pd):
-    print("\n###### ComputeCollaborativeFiltering_User_User ######")
+def ComputeCollaborativeFiltering_User_User(recipe_df, train_rating_df, pd, benchmark):
+    print("\n###### Compute CollaborativeFiltering_User_User ######")
     df = pd.merge(recipe_df, train_rating_df, on='recipe_id', how='inner')
     reader = Reader(rating_scale=(1, 5))
     data = Dataset.load_from_df(df[['user_id', 'recipe_id', 'rating']], reader)
@@ -20,12 +20,11 @@ def ComputeCollaborativeFiltering_User_User(recipe_df, train_rating_df, pd):
     sim_options = {'name': 'cosine', 'user_based': True}
 
     #Method 1:
-    algo = KNNBasic(k=40, sim_options=sim_options)
+    algo = KNNBasic(k=40, sim_options=sim_options, verbose=False)
     algo.fit(trainSet)
     predictions = algo.test(testSet)
 
-    print("RMSE: ", Evaluators.RMSE(predictions))
-    print("MAE: ", Evaluators.MAE(predictions))
+    Evaluators.RunAllEvals(predictions, benchmark)
 
     #Display Results
     #Top5_Recipe_Reco_PerUser.DisplayResults(predictionsKNN)
