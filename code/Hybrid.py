@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from surprise import KNNBasic, SVD, CoClustering, SlopeOne, Reader, Dataset, accuracy
 from surprise.model_selection import split
 from sklearn.model_selection import train_test_split
+from code import Evaluators
 
 class HybridAlgorithm(surprise.AlgoBase):
     def __init__(self, epochs, learning_rate, num_models, knnbasic, svd, coclus, slopeone):
@@ -18,16 +19,14 @@ class HybridAlgorithm(surprise.AlgoBase):
         self.slopeone = slopeone
 
     def fit(self, traindata):
-        print("Hybrid Fit")
         surprise.AlgoBase.fit(self, trainset=traindata.build_full_trainset())
         traindata = traindata.build_full_trainset().build_testset()
-        #print(traindata.__sizeof__())
         for epoch in range(self.epochs):
             rmseGradient = []
             prediction = self.knnbasic.test(traindata)
             rmseGradient.append(accuracy.rmse(prediction, verbose=False) * self.learning_rate)
             prediction = self.svd.test(traindata)
-            rmseGradient.append(accuracy.rmse(prediction, verbose=True) * self.learning_rate)
+            rmseGradient.append(accuracy.rmse(prediction, verbose=False) * self.learning_rate)
             prediction = self.coclus.test(traindata)
             rmseGradient.append(accuracy.rmse(prediction, verbose=False) * self.learning_rate)
             prediction = self.slopeone.test(traindata)
@@ -48,7 +47,7 @@ class HybridAlgorithm(surprise.AlgoBase):
         algoResults = np.where(algoResults == None, 0, algoResults)
         return np.sum(np.dot(self.alpha, algoResults))
 
-def ComputeHybrid(recipe_df, train_rating_df, pd):
+def ComputeHybrid(recipe_df, train_rating_df, pd, benchmark):
     print("\n###### Compute Hybrid ######")
     df = pd.merge(recipe_df, train_rating_df, on='recipe_id', how='inner')
 
@@ -79,7 +78,7 @@ def ComputeHybrid(recipe_df, train_rating_df, pd):
     for trainset, testset in kSplit.split(data):  # iterate through the folds.
         svd.fit(trainset)
         predictionsSVD = svd.test(testset)
-        rmseSVD.append(accuracy.rmse(predictionsSVD, verbose=True))  # get root means squared error
+        rmseSVD.append(accuracy.rmse(predictionsSVD, verbose=False))  # get root means squared error
 
     rmseCo = []
     coclus = CoClustering(n_cltr_u=4,n_cltr_i=4,n_epochs=5)
@@ -104,13 +103,20 @@ def ComputeHybrid(recipe_df, train_rating_df, pd):
 
     PredArray = [predictionsKNN, predictionsSVD, predictionsCoClus, predictionsSlope, predictionsHybrid]
     DisplayPlot(PredArray, rmseKNN, rmseSVD, rmseCo, rmseSlope, rmseHybrid)
+    Evaluators.RunAllEvals(predictionsHybrid, benchmark)
+    #precisions, recalls = Evaluators.precision_recall_at_k(predictions=predictionsHybrid)
+    # Precision and recall can then be averaged over all users
+    #precisionAt10 = sum(prec for prec in precisions.values()) / len(precisions)
+    #recallAt10 = sum(rec for rec in recalls.values()) / len(recalls)
+    #print("precisionAt10: ", precisionAt10)
+    #print("recallAt10: ", recallAt10)
 
 def DisplayPlot(PredArray, rmseKNN, rmseSVD, rmseCo, rmseSlope, rmseHybrid):
-    print("rmseKNN= ", rmseKNN)
-    print("rmseSVD= ", rmseSVD)
-    print("rmseCo= ", rmseCo)
-    print("rmseSlope= ", rmseSlope)
-    print("rmseHybrid= ", rmseHybrid)
+    #print("rmseKNN= ", rmseKNN)
+    #print("rmseSVD= ", rmseSVD)
+    #print("rmseCo= ", rmseCo)
+    #print("rmseSlope= ", rmseSlope)
+    #print("rmseHybrid= ", rmseHybrid)
     for pred in PredArray:
         plt.plot(rmseKNN, label='knn', color='r')
         plt.plot(rmseSVD, label='svd', color='g')

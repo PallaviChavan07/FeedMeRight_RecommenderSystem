@@ -55,7 +55,7 @@ def RunAllEvals(predictions, benchmark):
     #fcp = FCP(predictions)
     mse = 0
     #mse = MSE(predictions)
-    precisions, recalls = precision_recall_at_k(predictions, k=100, threshold=4)
+    precisions, recalls = precision_recall_at_k(predictions)
     # Precision and recall can then be averaged over all users
     precisionAt10 = sum(prec for prec in precisions.values()) / len(precisions)
     recallAt10 = sum(rec for rec in recalls.values()) / len(recalls)
