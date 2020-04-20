@@ -17,23 +17,24 @@ class HybridAlgorithm(surprise.AlgoBase):
         self.coclus = coclus
         self.slopeone = slopeone
 
-    def fit(self, holdout):
-        surprise.AlgoBase.fit(self, trainset=holdout.build_full_trainset())
-        holdout = holdout.build_full_trainset().build_testset()
+    def fit(self, traindata):
+        print("Hybrid Fit")
+        surprise.AlgoBase.fit(self, trainset=traindata.build_full_trainset())
+        traindata = traindata.build_full_trainset().build_testset()
+        #print(traindata.__sizeof__())
         for epoch in range(self.epochs):
             rmseGradient = []
-            prediction = self.knnbasic.test(holdout)
+            prediction = self.knnbasic.test(traindata)
             rmseGradient.append(accuracy.rmse(prediction, verbose=False) * self.learning_rate)
-            prediction = self.svd.test(holdout)
+            prediction = self.svd.test(traindata)
+            rmseGradient.append(accuracy.rmse(prediction, verbose=True) * self.learning_rate)
+            prediction = self.coclus.test(traindata)
             rmseGradient.append(accuracy.rmse(prediction, verbose=False) * self.learning_rate)
-            prediction = self.coclus.test(holdout)
-            rmseGradient.append(accuracy.rmse(prediction, verbose=False) * self.learning_rate)
-            prediction = self.slopeone.test(holdout)
+            prediction = self.slopeone.test(traindata)
             rmseGradient.append(accuracy.rmse(prediction, verbose=False) * self.learning_rate)
             # convergence check:
             newalpha = self.alpha - rmseGradient
-            if (newalpha - self.alpha < 0.001).all():
-                break
+            if (newalpha - self.alpha < 0.001).all(): break
             self.alpha = newalpha
         return self
 
@@ -66,7 +67,7 @@ def ComputeHybrid(recipe_df, train_rating_df, pd):
     kSplit = split.KFold(n_splits=10, shuffle=True)
     sim_options = {'name': 'cosine', 'user_based': False}
     # errors on removing sim_options.
-    knnbasic = KNNBasic(sim_options=sim_options, verbose=False)
+    knnbasic = KNNBasic(k=40, sim_options=sim_options, verbose=False)
     rmseKNN = []
     for trainset, testset in kSplit.split(data):  # iterate through the folds.
         knnbasic.fit(trainset)
@@ -74,14 +75,14 @@ def ComputeHybrid(recipe_df, train_rating_df, pd):
         rmseKNN.append(accuracy.rmse(predictionsKNN, verbose=False))  # get root means squared error
 
     rmseSVD = []
-    svd = SVD()
+    svd = SVD(n_factors=30,n_epochs=5,biased=True)
     for trainset, testset in kSplit.split(data):  # iterate through the folds.
         svd.fit(trainset)
         predictionsSVD = svd.test(testset)
-        rmseSVD.append(accuracy.rmse(predictionsSVD, verbose=False))  # get root means squared error
+        rmseSVD.append(accuracy.rmse(predictionsSVD, verbose=True))  # get root means squared error
 
     rmseCo = []
-    coclus = CoClustering()
+    coclus = CoClustering(n_cltr_u=4,n_cltr_i=4,n_epochs=5)
     for trainset, testset in kSplit.split(data):  # iterate through the folds.
         coclus.fit(trainset)
         predictionsCoClus = coclus.test(testset)
@@ -94,9 +95,9 @@ def ComputeHybrid(recipe_df, train_rating_df, pd):
         predictionsSlope = slopeone.test(testset)
         rmseSlope.append(accuracy.rmse(predictionsSlope, verbose=False))  # get root means squared error
 
-    hybrid = HybridAlgorithm(epochs=20, learning_rate=0.05, num_models=4, knnbasic=knnbasic, svd=svd, coclus=coclus, slopeone=slopeone)
-    hybrid.fit(holdout)
+    hybrid = HybridAlgorithm(epochs=10, learning_rate=0.05, num_models=4, knnbasic=knnbasic, svd=svd, coclus=coclus, slopeone=slopeone)
     rmseHybrid = []
+    hybrid.fit(holdout)
     for trainset, testset in kSplit.split(data):  # iterate through the folds.
         predictionsHybrid = hybrid.test(testset)
         rmseHybrid.append(accuracy.rmse(predictionsHybrid, verbose=False))  # get root means squared error
