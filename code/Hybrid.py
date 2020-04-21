@@ -1,6 +1,7 @@
 #https://www.kaggle.com/robottums/hybrid-recommender-systems-with-surprise
 import surprise
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 from surprise import KNNBasic, SVD, CoClustering, SlopeOne, Reader, Dataset, accuracy
 from surprise.model_selection import split
@@ -18,23 +19,32 @@ class HybridAlgorithm(surprise.AlgoBase):
         self.coclus = coclus
         self.slopeone = slopeone
 
-    def fit(self, traindata):
-        surprise.AlgoBase.fit(self, trainset=traindata.build_full_trainset())
-        traindata = traindata.build_full_trainset().build_testset()
+    def fit(self, holdout):
+        surprise.AlgoBase.fit(self, trainset=holdout.build_full_trainset())
+        holdout = holdout.build_full_trainset().build_testset()
         for epoch in range(self.epochs):
-            rmseGradient = []
-            prediction = self.knnbasic.test(traindata)
-            rmseGradient.append(accuracy.rmse(prediction, verbose=False) * self.learning_rate)
-            prediction = self.svd.test(traindata)
-            rmseGradient.append(accuracy.rmse(prediction, verbose=False) * self.learning_rate)
-            prediction = self.coclus.test(traindata)
-            rmseGradient.append(accuracy.rmse(prediction, verbose=False) * self.learning_rate)
-            prediction = self.slopeone.test(traindata)
-            rmseGradient.append(accuracy.rmse(prediction, verbose=False) * self.learning_rate)
+            # print("epoch= ", epoch)
+            # rmseGradient = []
+            # prediction = self.knnbasic.test(traindata)
+            # rmseGradient.append(accuracy.rmse(prediction, verbose=False) * self.learning_rate)
+            # prediction = self.svd.test(traindata)
+            # rmseGradient.append(accuracy.rmse(prediction, verbose=False) * self.learning_rate)
+            # prediction = self.coclus.test(traindata)
+            # rmseGradient.append(accuracy.rmse(prediction, verbose=False) * self.learning_rate)
+            # prediction = self.slopeone.test(traindata)
+            # rmseGradient.append(accuracy.rmse(prediction, verbose=False) * self.learning_rate)
+            # #convergence check:
+            # newalpha = self.alpha - rmseGradient
+            # if (newalpha - self.alpha < 0.001).all(): break
+            # self.alpha = newalpha
+
+            predictions = np.array([self.knnbasic.test(holdout), self.svd.test(holdout), self.coclus.test(holdout), self.slopeone.test(holdout)])
+            rmseGradient = np.array([accuracy.rmse(list(pred), verbose=False) for pred in predictions])
+            newalpha = self.alpha - self.learning_rate * rmseGradient
             # convergence check:
-            newalpha = self.alpha - rmseGradient
-            if (newalpha - self.alpha < 0.001).all(): break
+            if (newalpha - self.alpha < 0.001).any(): break
             self.alpha = newalpha
+
         return self
 
     def estimate(self, u, i):
@@ -79,7 +89,8 @@ def ComputeHybrid(recipe_df, train_rating_df, pd, benchmark):
         svd.fit(trainset)
         predictionsSVD = svd.test(testset)
         rmseSVD.append(accuracy.rmse(predictionsSVD, verbose=False))  # get root means squared error
-
+    #print("predictionsSVD = ", predictionsSVD)
+    #print("rmseSVD = ", rmseSVD)
     rmseCo = []
     coclus = CoClustering(n_cltr_u=4,n_cltr_i=4,n_epochs=5)
     for trainset, testset in kSplit.split(data):  # iterate through the folds.
@@ -127,4 +138,9 @@ def DisplayPlot(PredArray, rmseKNN, rmseSVD, rmseCo, rmseSlope, rmseHybrid):
     plt.xlabel('folds (i.e. each computed pred and rmse)')
     plt.ylabel('accuracy (rmse value)')
     plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.5)
+
+    #rmsemetric = pd.DataFrame([rmseKNN, rmseSVD, rmseCo, rmseSlope, rmseHybrid])
+    #ax = rmsemetric.transpose().plot(kind='bar', figsize=(15, 8))
+    #for p in ax.patches:
+    #    ax.annotate("%.3f" % p.get_height(), (p.get_x() + p.get_width() / 2., p.get_height()), ha='center', va='center',xytext=(0, 10), textcoords='offset points')
     plt.show()
