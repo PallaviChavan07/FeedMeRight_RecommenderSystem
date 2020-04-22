@@ -178,7 +178,7 @@ popularity_model = PopularityRecommender(item_popularity_df, recipe_df)
 print('\nEvaluating Popularity recommendation model...')
 pop_global_metrics, pop_detailed_results_df = model_evaluator.evaluate_model(popularity_model)
 print('Global metrics:\n%s' % pop_global_metrics)
-pop_detailed_results_df.head(10)
+#print(pop_detailed_results_df.head(5))
 
 ########################################## CONTENT BASED ##########################################
 #Ignoring stopwords (words with no semantics) from English and Portuguese (as we have a corpus with mixed languages)
@@ -228,7 +228,7 @@ def build_users_profiles():
     return user_profiles
 
 user_profiles = build_users_profiles()
-print("Total User Profiles: ", len(user_profiles))
+print("\nTotal User Profiles: ", len(user_profiles))
 #print(user_profiles)
 myprofile = user_profiles[3324846]
 #print(myprofile.shape)
@@ -254,18 +254,21 @@ class ContentBasedRecommender:
             # Sort the similar items by similarity
             similar_items = sorted([(item_ids[i], cosine_similarities[0, i]) for i in similar_indices], key=lambda x: -x[1])
         except:
-            similar_items = None
+            return None
 
         return similar_items
 
     def recommend_items(self, user_id, items_to_ignore=[], topn=10, verbose=False):
-        similar_items = self._get_similar_items_to_user_profile(user_id)
+        try:
+            similar_items = self._get_similar_items_to_user_profile(user_id)
+        except:
+            return None
         # early exit
         if similar_items is None: return None
 
         # Ignores items the user has already interacted
         similar_items_filtered = list(filter(lambda x: x[0] not in items_to_ignore, similar_items))
-        recommendations_df = pd.DataFrame(similar_items_filtered, columns=['recipe_id', 'rating']).head(topn)
+        recommendations_df = pd.DataFrame(similar_items_filtered, columns=['recipe_id', 'recStrength']).head(topn)
         if verbose:
             if self.items_df is None:
                 raise Exception('"items_df" is required in verbose mode')
@@ -279,6 +282,120 @@ content_based_recommender_model = ContentBasedRecommender(recipe_df)
 print('\nEvaluating Content-Based Filtering model...')
 cb_global_metrics, cb_detailed_results_df = model_evaluator.evaluate_model(content_based_recommender_model)
 print('Global metrics:\n%s' % cb_global_metrics)
-cb_detailed_results_df.head(10)
+#print("CB Log: Cols in cb_detailed_results_df", list(cb_detailed_results_df.columns.values))
+#print(cb_detailed_results_df.head(5))
 
 ########################################## COLLABORATIVE FILTERING BASED ##########################################
+
+#Creating a sparse pivot table with users in rows and items in columns
+users_items_pivot_matrix_df = interactions_train_df.pivot(index='user_id', columns='recipe_id', values='rating').fillna(0)
+users_items_pivot_matrix_df.head(10)
+
+users_items_pivot_matrix = users_items_pivot_matrix_df
+users_items_pivot_matrix[:10]
+users_ids = list(users_items_pivot_matrix_df.index)
+users_ids[:10]
+users_items_pivot_sparse_matrix = csr_matrix(users_items_pivot_matrix)
+#The number of factors to factor the user-item matrix.
+NUMBER_OF_FACTORS_MF = 15
+#Performs matrix factorization of the original user item matrix
+#U, sigma, Vt = svds(users_items_pivot_matrix, k = NUMBER_OF_FACTORS_MF)
+U, sigma, Vt = svds(users_items_pivot_sparse_matrix, k = NUMBER_OF_FACTORS_MF)
+#print(U.shape)
+#print(Vt.shape)
+sigma = np.diag(sigma)
+#print(sigma.shape)
+all_user_predicted_ratings = np.dot(np.dot(U, sigma), Vt)
+#print(all_user_predicted_ratings)
+
+all_user_predicted_ratings_norm = (all_user_predicted_ratings - all_user_predicted_ratings.min()) / (all_user_predicted_ratings.max() - all_user_predicted_ratings.min())
+#Converting the reconstructed matrix back to a Pandas dataframe
+cf_preds_df = pd.DataFrame(all_user_predicted_ratings_norm, columns = users_items_pivot_matrix_df.columns, index=users_ids).transpose()
+#print("CF log:", cf_preds_df.head(5))
+#print("CF log:", len(cf_preds_df.columns))
+
+class CFRecommender:
+    MODEL_NAME = 'Collaborative Filtering'
+    def __init__(self, cf_predictions_df, items_df=None):
+        self.cf_predictions_df = cf_predictions_df
+        self.items_df = items_df
+
+    def get_model_name(self):
+        return self.MODEL_NAME
+
+    def recommend_items(self, user_id, items_to_ignore=[], topn=10, verbose=False):
+        # Get and sort the user's predictions
+        try:
+            sorted_user_predictions = self.cf_predictions_df[user_id].sort_values(ascending=False).reset_index().rename(columns={user_id: 'recStrength'})
+        except:
+            return None
+
+        # Recommend the highest predicted rating movies that the user hasn't seen yet.
+        recommendations_df = sorted_user_predictions[~sorted_user_predictions['recipe_id'].isin(items_to_ignore)].sort_values('recStrength', ascending=False).head(topn)
+
+        if verbose:
+            if self.items_df is None:
+                raise Exception('"items_df" is required in verbose mode')
+
+            recommendations_df = recommendations_df.merge(self.items_df, how='left', left_on='recipe_id', right_on='recipe_id')[['recStrength', 'recipe_id', 'recipe_name', 'ingredients', 'nutritions']]
+
+        return recommendations_df
+
+
+cf_recommender_model = CFRecommender(cf_preds_df, recipe_df)
+print('\nEvaluating Collaborative Filtering (SVD Matrix Factorization) model...')
+cf_global_metrics, cf_detailed_results_df = model_evaluator.evaluate_model(cf_recommender_model)
+print('Global metrics:\n%s' % cf_global_metrics)
+#print("CF Log: Cols in cf_detailed_results_df", list(cf_detailed_results_df.columns.values))
+#print(cf_detailed_results_df.head(5))
+
+########################################## HYBRID FILTERING BASED ##########################################
+class HybridRecommender:
+    MODEL_NAME = 'Hybrid'
+    def __init__(self, cb_rec_model, cf_rec_model, items_df, cb_ensemble_weight=1.0, cf_ensemble_weight=1.0):
+        self.cb_rec_model = cb_rec_model
+        self.cf_rec_model = cf_rec_model
+        self.cb_ensemble_weight = cb_ensemble_weight
+        self.cf_ensemble_weight = cf_ensemble_weight
+        self.items_df = items_df
+
+    def get_model_name(self):
+        return self.MODEL_NAME
+
+    def recommend_items(self, user_id, items_to_ignore=[], topn=10, verbose=False):
+        # Getting the top-1000 Content-based filtering recommendations
+        try:
+            cb_recs_df = self.cb_rec_model.recommend_items(user_id, items_to_ignore=items_to_ignore, verbose=verbose, topn=1000).rename(columns={'recStrength': 'recStrengthCB'})
+        except:
+            return None
+
+        # Getting the top-1000 Collaborative filtering recommendations
+        try:
+            cf_recs_df = self.cf_rec_model.recommend_items(user_id, items_to_ignore=items_to_ignore, verbose=verbose, topn=1000).rename(columns={'recStrength': 'recStrengthCF'})
+        except:
+            return None
+
+        # Combining the results by contentId
+        recs_df = cb_recs_df.merge(cf_recs_df, how='outer', left_on='recipe_id', right_on='recipe_id').fillna(0.0)
+
+        # Computing a hybrid recommendation score based on CF and CB scores
+        # recs_df['recStrengthHybrid'] = recs_df['recStrengthCB'] * recs_df['recStrengthCF']
+        recs_df['recStrengthHybrid'] = (recs_df['recStrengthCB'] * self.cb_ensemble_weight) + (recs_df['recStrengthCF'] * self.cf_ensemble_weight)
+
+        # Sorting recommendations by hybrid score
+        recommendations_df = recs_df.sort_values('recStrengthHybrid', ascending=False).head(topn)
+
+        if verbose:
+            if self.items_df is None:
+                raise Exception('"items_df" is required in verbose mode')
+
+            recommendations_df = recommendations_df.merge(self.items_df, how='left', left_on='recipe_id', right_on='recipe_id')[['recStrength', 'recipe_id', 'recipe_name', 'ingredients', 'nutritions']]
+
+        return recommendations_df
+
+
+hybrid_recommender_model = HybridRecommender(content_based_recommender_model, cf_recommender_model, recipe_df, cb_ensemble_weight=1.0, cf_ensemble_weight=100.0)
+print('\nEvaluating Hybrid model...')
+hybrid_global_metrics, hybrid_detailed_results_df = model_evaluator.evaluate_model(hybrid_recommender_model)
+print('Global metrics:\n%s' % hybrid_global_metrics)
+#print(hybrid_detailed_results_df.head(5))
