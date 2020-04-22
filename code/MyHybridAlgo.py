@@ -173,9 +173,9 @@ class PopularityRecommender:
         return recommendations_df
 
 popularity_model = PopularityRecommender(item_popularity_df, articles_df)
-print('Evaluating Popularity recommendation model...')
+print('\nEvaluating Popularity recommendation model...')
 pop_global_metrics, pop_detailed_results_df = model_evaluator.evaluate_model(popularity_model)
-print('\nGlobal metrics:\n%s' % pop_global_metrics)
+print('Global metrics:\n%s' % pop_global_metrics)
 pop_detailed_results_df.head(10)
 
 
@@ -224,9 +224,9 @@ def build_users_profiles():
     return user_profiles
 
 user_profiles = build_users_profiles()
-#len(user_profiles)
+print("\nTotal User Profiles: ", len(user_profiles))
 myprofile = user_profiles[-1479311724257856983]
-print(myprofile.shape)
+#print(myprofile.shape)
 pd.DataFrame(sorted(zip(tfidf_feature_names, user_profiles[-1479311724257856983].flatten().tolist()), key=lambda x: -x[1])[:20], columns=['token', 'relevance'])
 
 class ContentBasedRecommender:
@@ -266,9 +266,9 @@ class ContentBasedRecommender:
 
 content_based_recommender_model = ContentBasedRecommender(articles_df)
 
-print('Evaluating Content-Based Filtering model...')
+print('\nEvaluating Content-Based Filtering model...')
 cb_global_metrics, cb_detailed_results_df = model_evaluator.evaluate_model(content_based_recommender_model)
-print('\nGlobal metrics:\n%s' % cb_global_metrics)
+print('Global metrics:\n%s' % cb_global_metrics)
 cb_detailed_results_df.head(10)
 
 #Creating a sparse pivot table with users in rows and items in columns
@@ -329,9 +329,9 @@ class CFRecommender:
 
 cf_recommender_model = CFRecommender(cf_preds_df, articles_df)
 
-print('Evaluating Collaborative Filtering (SVD Matrix Factorization) model...')
+print('\nEvaluating Collaborative Filtering (SVD Matrix Factorization) model...')
 cf_global_metrics, cf_detailed_results_df = model_evaluator.evaluate_model(cf_recommender_model)
-print('\nGlobal metrics:\n%s' % cf_global_metrics)
+print('Global metrics:\n%s' % cf_global_metrics)
 cf_detailed_results_df.head(10)
 
 
@@ -375,9 +375,9 @@ class HybridRecommender:
 
 
 hybrid_recommender_model = HybridRecommender(content_based_recommender_model, cf_recommender_model, articles_df, cb_ensemble_weight=1.0, cf_ensemble_weight=100.0)
-print('Evaluating Hybrid model...')
+print('\nEvaluating Hybrid model...')
 hybrid_global_metrics, hybrid_detailed_results_df = model_evaluator.evaluate_model(hybrid_recommender_model)
-print('\nGlobal metrics:\n%s' % hybrid_global_metrics)
+print('Global metrics:\n%s' % hybrid_global_metrics)
 hybrid_detailed_results_df.head(10)
 
 global_metrics_df = pd.DataFrame([cb_global_metrics, pop_global_metrics, cf_global_metrics, hybrid_global_metrics]).set_index('modelName')
@@ -399,3 +399,109 @@ def inspect_interactions(person_id, test_set=True):
 inspect_interactions(-1479311724257856983, test_set=False).head(20)
 hybridmodelrecoSingleUserdf = hybrid_recommender_model.recommend_items(-1479311724257856983, topn=20, verbose=True)
 print(hybridmodelrecoSingleUserdf)
+
+
+
+#Output:
+# # users: 1895
+# # users with at least 5 interactions: 1140
+# # of interactions: 72312
+# # of interactions from users with at least 5 interactions: 69868
+# # of unique user/item interactions: 39106
+# # interactions on Train set: 31284
+# # interactions on Test set: 7822
+#
+# Evaluating Popularity recommendation model...
+# 1139 users processed
+# Global metrics:
+# {'modelName': 'Popularity', 'recall@5': 0.2418818716440808, 'recall@10': 0.3725389925850166}
+#
+# Total User Profiles:  1140
+#
+# Evaluating Content-Based Filtering model...
+# 1139 users processed
+# Global metrics:
+# {'modelName': 'Content-Based', 'recall@5': 0.10163641012528765, 'recall@10': 0.17220659677831757}
+#
+# Evaluating Collaborative Filtering (SVD Matrix Factorization) model...
+# 1139 users processed
+# Global metrics:
+# {'modelName': 'Collaborative Filtering', 'recall@5': 0.33392994119151115, 'recall@10': 0.46803886474047557}
+#
+# Evaluating Hybrid model...
+# 1139 users processed
+# Global metrics:
+# {'modelName': 'Hybrid', 'recall@5': 0.333802096650473, 'recall@10': 0.465993352083866}
+#                          recall@5  recall@10
+# modelName
+# Content-Based            0.101636   0.172207
+# Popularity               0.241882   0.372539
+# Collaborative Filtering  0.333930   0.468039
+# Hybrid                   0.333802   0.465993
+#     recStrengthHybrid  ...  lang
+# 0           25.425245  ...    en
+# 1           25.369932  ...    en
+# 2           24.701694  ...    pt
+# 3           24.377750  ...    en
+# 4           24.362064  ...    en
+# 5           24.183549  ...    en
+# 6           24.162866  ...    en
+# 7           23.921336  ...    en
+# 8           23.864363  ...    en
+# 9           23.804789  ...    en
+# 10          23.529632  ...    en
+# 11          23.313283  ...    pt
+# 12          23.189662  ...    en
+# 13          22.715206  ...    en
+# 14          22.553447  ...    en
+# 15          22.442176  ...    en
+# 16          22.339452  ...    en
+# 17          22.311658  ...    pt
+# 18          22.264841  ...    en
+# 19          22.231268  ...    en
+#
+# [20 rows x 5 columns]
+
+
+
+
+
+
+
+
+
+
+########################################## POPULARITY BASED ##########################################
+#Computes the most popular items
+#item_popularity_df = interactions_full_df.groupby('recipe_id').sum().reset_index()
+#item_popularity_df = interactions_full_df.groupby('recipe_id')['rating'].sum().sort_values(ascending=False).reset_index()
+#item_popularity_df.head(10)
+
+# class PopularityRecommender:
+#     MODEL_NAME = 'Popularity'
+#     def __init__(self, popularity_df, items_df=None):
+#         self.popularity_df = popularity_df
+#         self.items_df = items_df
+#
+#     def get_model_name(self):
+#         return self.MODEL_NAME
+#
+#     def recommend_items(self, user_id, items_to_ignore=[], topn=10, verbose=False):
+#         # Recommend the more popular items that the user hasn't seen yet. (maybe needs sorting here?)
+#         #recommendations_df = self.popularity_df[~self.popularity_df['recipe_id'].isin(items_to_ignore)].head(topn)
+#         recommendations_df = self.popularity_df[~self.popularity_df['recipe_id'].isin(items_to_ignore)].sort_values('rating', ascending=False).head(topn)
+#
+#         if verbose:
+#             if self.items_df is None:
+#                 raise Exception('"items_df" is required in verbose mode')
+#
+#             recommendations_df = recommendations_df.merge(self.items_df, how='left', left_on='recipe_id', right_on='recipe_id')[['recipe_id', 'recipe_name', 'ingredients', 'nutritions']]
+#
+#         return recommendations_df
+
+#popularity_model = PopularityRecommender(item_popularity_df, recipe_df)
+#print('\nEvaluating Popularity recommendation model...')
+#pop_global_metrics, pop_detailed_results_df = model_evaluator.evaluate_model(popularity_model)
+#print('Global metrics:\n%s' % pop_global_metrics)
+#print(pop_detailed_results_df.head(5))
+

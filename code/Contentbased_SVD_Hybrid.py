@@ -11,30 +11,55 @@ from sklearn.metrics.pairwise import cosine_similarity
 from scipy.sparse.linalg import svds
 from sklearn.preprocessing import MinMaxScaler
 import matplotlib.pyplot as plt
+import math
 
+# recipe_df = pd.read_csv('../data/small_10k/export_rated_recipes_set.csv')
+# train_rating_df = pd.read_csv('../data/small_10k/core-data-train_rating.csv')
+# test_rating_df = pd.read_csv('../data/small_10k/core-data-test_rating.csv')
+#
+# merged_df = pd.merge(recipe_df, train_rating_df, on='recipe_id', how='inner')
+# interactions_df = merged_df[['user_id', 'recipe_id', 'rating']]
+#
+# users_interactions_count_df = interactions_df.groupby(['user_id', 'recipe_id']).size().groupby('user_id').size()
+# print('# users: %d' % len(users_interactions_count_df))
+# users_with_enough_interactions_df = users_interactions_count_df[users_interactions_count_df >= 5].reset_index()[['user_id']]
+# print('# users with at least 5 interactions: %d' % len(users_with_enough_interactions_df))
+# print('# of interactions: %d' % len(interactions_df))
+# interactions_from_selected_users_df = interactions_df.merge(users_with_enough_interactions_df, how = 'right', left_on = 'user_id', right_on = 'user_id')
+# print('# of interactions from users with at least 5 interactions: %d' % len(interactions_from_selected_users_df))
+#
+# interactions_full_df = interactions_from_selected_users_df.groupby(['user_id', 'recipe_id'])
+# print('# of unique user/item interactions: %d' % len(interactions_full_df))
+# interactions_full_df.head(10)
+#
+# interactions_full_df = merged_df[['user_id', 'recipe_id', 'rating']]
+# interactions_train_df, interactions_test_df = train_test_split(interactions_full_df, test_size=.20)
+# print('# interactions on Train set: %d' % len(interactions_train_df))
+# print('# interactions on Test set: %d' % len(interactions_test_df))
+
+#New Code Start
 recipe_df = pd.read_csv('../data/small_10k/export_rated_recipes_set.csv')
-train_rating_df = pd.read_csv('../data/small_10k/core-data-train_rating.csv')
-test_rating_df = pd.read_csv('../data/small_10k/core-data-test_rating.csv')
+#print(recipe_df.head(5))
 
+train_rating_df = pd.read_csv('../data/small_10k/core-data-train_rating.csv')
 merged_df = pd.merge(recipe_df, train_rating_df, on='recipe_id', how='inner')
 interactions_df = merged_df[['user_id', 'recipe_id', 'rating']]
-
+print(interactions_df.head(5))
 users_interactions_count_df = interactions_df.groupby(['user_id', 'recipe_id']).size().groupby('user_id').size()
 print('# users: %d' % len(users_interactions_count_df))
-users_with_enough_interactions_df = users_interactions_count_df[users_interactions_count_df >= 5].reset_index()[['user_id']]
+#users_with_enough_interactions_df = users_interactions_count_df[users_interactions_count_df >= 5].reset_index()[['user_id']]
+users_with_enough_interactions_df = users_interactions_count_df[users_interactions_count_df >= 0].reset_index()[['user_id']]
 print('# users with at least 5 interactions: %d' % len(users_with_enough_interactions_df))
 print('# of interactions: %d' % len(interactions_df))
 interactions_from_selected_users_df = interactions_df.merge(users_with_enough_interactions_df, how = 'right', left_on = 'user_id', right_on = 'user_id')
 print('# of interactions from users with at least 5 interactions: %d' % len(interactions_from_selected_users_df))
 
-interactions_full_df = interactions_from_selected_users_df.groupby(['user_id', 'recipe_id'])
+interactions_full_df = interactions_from_selected_users_df.groupby(['user_id', 'recipe_id'])['rating'].sum().reset_index()
 print('# of unique user/item interactions: %d' % len(interactions_full_df))
-interactions_full_df.head(10)
-
-interactions_full_df = merged_df[['user_id', 'recipe_id', 'rating']]
-interactions_train_df, interactions_test_df = train_test_split(interactions_full_df, test_size=.20)
+interactions_train_df, interactions_test_df = train_test_split(interactions_full_df, test_size=0.20)
 print('# interactions on Train set: %d' % len(interactions_train_df))
 print('# interactions on Test set: %d' % len(interactions_test_df))
+#New Code End
 
 #Indexing by user_id to speed up the searches during evaluation
 interactions_full_indexed_df = interactions_full_df.set_index('user_id')
@@ -142,40 +167,6 @@ class ModelEvaluator:
         return global_metrics, detailed_results_df
 
 model_evaluator = ModelEvaluator()
-
-########################################## POPULARITY BASED ##########################################
-#Computes the most popular items
-#item_popularity_df = interactions_full_df.groupby('recipe_id').sum().reset_index()
-item_popularity_df = interactions_full_df.groupby('recipe_id')['rating'].sum().sort_values(ascending=False).reset_index()
-item_popularity_df.head(10)
-
-class PopularityRecommender:
-    MODEL_NAME = 'Popularity'
-    def __init__(self, popularity_df, items_df=None):
-        self.popularity_df = popularity_df
-        self.items_df = items_df
-
-    def get_model_name(self):
-        return self.MODEL_NAME
-
-    def recommend_items(self, user_id, items_to_ignore=[], topn=10, verbose=False):
-        # Recommend the more popular items that the user hasn't seen yet. (maybe needs sorting here?)
-        #recommendations_df = self.popularity_df[~self.popularity_df['recipe_id'].isin(items_to_ignore)].head(topn)
-        recommendations_df = self.popularity_df[~self.popularity_df['recipe_id'].isin(items_to_ignore)].sort_values('rating', ascending=False).head(topn)
-
-        if verbose:
-            if self.items_df is None:
-                raise Exception('"items_df" is required in verbose mode')
-
-            recommendations_df = recommendations_df.merge(self.items_df, how='left', left_on='recipe_id', right_on='recipe_id')[['recipe_id', 'recipe_name', 'ingredients', 'nutritions']]
-
-        return recommendations_df
-
-popularity_model = PopularityRecommender(item_popularity_df, recipe_df)
-print('\nEvaluating Popularity recommendation model...')
-pop_global_metrics, pop_detailed_results_df = model_evaluator.evaluate_model(popularity_model)
-print('Global metrics:\n%s' % pop_global_metrics)
-#print(pop_detailed_results_df.head(5))
 
 ########################################## CONTENT BASED ##########################################
 #Ignoring stopwords (words with no semantics) from English and Portuguese (as we have a corpus with mixed languages)
@@ -397,7 +388,8 @@ print('Global metrics:\n%s' % hybrid_global_metrics)
 #print(hybrid_detailed_results_df.head(5))
 
 #plot graph
-global_metrics_df = pd.DataFrame([cb_global_metrics, pop_global_metrics, cf_global_metrics, hybrid_global_metrics]).set_index('modelName')
+#global_metrics_df = pd.DataFrame([cb_global_metrics, pop_global_metrics, cf_global_metrics, hybrid_global_metrics]).set_index('modelName')
+global_metrics_df = pd.DataFrame([cb_global_metrics, cf_global_metrics, hybrid_global_metrics]).set_index('modelName')
 #print(global_metrics_df)
 ax = global_metrics_df.transpose().plot(kind='bar', figsize=(15,8))
 for p in ax.patches:
