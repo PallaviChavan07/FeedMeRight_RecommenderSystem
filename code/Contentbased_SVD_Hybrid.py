@@ -98,8 +98,13 @@ class ModelEvaluator:
             items_to_filter_recs = non_interacted_items_sample.union(set([item_id]))
 
             # Filtering only recommendations that are either the interacted item or from a random sample of 100 non-interacted items
-            valid_recs_df = person_recs_df[person_recs_df['recipe_id'].isin(items_to_filter_recs)]
-            valid_recs = valid_recs_df['recipe_id'].values
+            if not person_recs_df is None:
+                valid_recs_df = person_recs_df[person_recs_df['recipe_id'].isin(items_to_filter_recs)]
+                valid_recs = valid_recs_df['recipe_id'].values
+            else:
+                #this way we can still get person_metrics
+                valid_recs = None
+
             # Verifying if the current interacted item is among the Top-N recommended items
             hit_at_5, index_at_5 = self._verify_hit_top_n(item_id, valid_recs, 5)
             hits_at_5_count += hit_at_5
@@ -116,6 +121,8 @@ class ModelEvaluator:
                           'interacted_count': interacted_items_count_testset,
                           'recall@5': recall_at_5,
                           'recall@10': recall_at_10}
+
+        #if person_recs_df is None: print(person_metrics)
         return person_metrics
 
     def evaluate_model(self, model):
@@ -141,7 +148,8 @@ model_evaluator = ModelEvaluator()
 
 ########################################## POPULARITY BASED ##########################################
 #Computes the most popular items
-item_popularity_df = interactions_full_df.groupby('recipe_id').sum().reset_index()
+#item_popularity_df = interactions_full_df.groupby('recipe_id').sum().reset_index()
+item_popularity_df = interactions_full_df.groupby('recipe_id')['rating'].sum().sort_values(ascending=False).reset_index()
 item_popularity_df.head(10)
 
 class PopularityRecommender:
@@ -155,7 +163,8 @@ class PopularityRecommender:
 
     def recommend_items(self, user_id, items_to_ignore=[], topn=10, verbose=False):
         # Recommend the more popular items that the user hasn't seen yet. (maybe needs sorting here?)
-        recommendations_df = self.popularity_df[~self.popularity_df['recipe_id'].isin(items_to_ignore)].head(topn)
+        #recommendations_df = self.popularity_df[~self.popularity_df['recipe_id'].isin(items_to_ignore)].head(topn)
+        recommendations_df = self.popularity_df[~self.popularity_df['recipe_id'].isin(items_to_ignore)].sort_values('rating', ascending=False).head(topn)
 
         if verbose:
             if self.items_df is None:
@@ -166,9 +175,9 @@ class PopularityRecommender:
         return recommendations_df
 
 popularity_model = PopularityRecommender(item_popularity_df, recipe_df)
-print('Evaluating Popularity recommendation model...')
+print('\nEvaluating Popularity recommendation model...')
 pop_global_metrics, pop_detailed_results_df = model_evaluator.evaluate_model(popularity_model)
-print('\nGlobal metrics:\n%s' % pop_global_metrics)
+print('Global metrics:\n%s' % pop_global_metrics)
 pop_detailed_results_df.head(10)
 
 ########################################## CONTENT BASED ##########################################
@@ -202,7 +211,6 @@ def build_users_profile(user_id, interactions_indexed_df):
     #some users might not have any recipe_id so check for the type
     if type(user_interactions_items) == pd.Series:
         user_item_profiles = get_item_profiles(interactions_person_df['recipe_id'])
-        #user_item_strengths = np.array(interactions_person_df['eventStrength']).reshape(-1, 1)
         user_item_strengths = np.array(interactions_person_df['rating']).reshape(-1, 1)
         # Weighted average of item profiles by the interactions strength
         user_item_strengths_weighted_avg = np.sum(user_item_profiles.multiply(user_item_strengths), axis=0) / np.sum(user_item_strengths)
@@ -223,7 +231,54 @@ user_profiles = build_users_profiles()
 print("Total User Profiles: ", len(user_profiles))
 #print(user_profiles)
 myprofile = user_profiles[3324846]
-print(myprofile.shape)
-print(pd.DataFrame(sorted(zip(tfidf_feature_names, user_profiles[3324846].flatten().tolist()), key=lambda x: -x[1])[:20], columns=['token', 'relevance']))
-#myprofile = user_profiles[4131398]
 #print(myprofile.shape)
+#print(pd.DataFrame(sorted(zip(tfidf_feature_names, user_profiles[3324846].flatten().tolist()), key=lambda x: -x[1])[:20], columns=['token', 'relevance']))
+#myprofile = user_profiles[682828]
+#print(myprofile.shape)
+
+class ContentBasedRecommender:
+    MODEL_NAME = 'Content-Based'
+    def __init__(self, items_df=None):
+        self.item_ids = item_ids
+        self.items_df = items_df
+
+    def get_model_name(self):
+        return self.MODEL_NAME
+
+    def _get_similar_items_to_user_profile(self, user_id, topn=1000):
+        # Computes the cosine similarity between the user profile and all item profiles
+        try:
+            cosine_similarities = cosine_similarity(user_profiles[user_id], tfidf_matrix)
+            # Gets the top similar items
+            similar_indices = cosine_similarities.argsort().flatten()[-topn:]
+            # Sort the similar items by similarity
+            similar_items = sorted([(item_ids[i], cosine_similarities[0, i]) for i in similar_indices], key=lambda x: -x[1])
+        except:
+            similar_items = None
+
+        return similar_items
+
+    def recommend_items(self, user_id, items_to_ignore=[], topn=10, verbose=False):
+        similar_items = self._get_similar_items_to_user_profile(user_id)
+        # early exit
+        if similar_items is None: return None
+
+        # Ignores items the user has already interacted
+        similar_items_filtered = list(filter(lambda x: x[0] not in items_to_ignore, similar_items))
+        recommendations_df = pd.DataFrame(similar_items_filtered, columns=['recipe_id', 'rating']).head(topn)
+        if verbose:
+            if self.items_df is None:
+                raise Exception('"items_df" is required in verbose mode')
+
+            recommendations_df = recommendations_df.merge(self.items_df, how='left', left_on='recipe_id', right_on='recipe_id')[['recStrength', 'recipe_id', 'recipe_name', 'ingredients', 'nutritions']]
+
+        return recommendations_df
+
+
+content_based_recommender_model = ContentBasedRecommender(recipe_df)
+print('\nEvaluating Content-Based Filtering model...')
+cb_global_metrics, cb_detailed_results_df = model_evaluator.evaluate_model(content_based_recommender_model)
+print('Global metrics:\n%s' % cb_global_metrics)
+cb_detailed_results_df.head(10)
+
+########################################## COLLABORATIVE FILTERING BASED ##########################################
