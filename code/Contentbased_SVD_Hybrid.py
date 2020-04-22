@@ -1,13 +1,11 @@
 import numpy as np
 import scipy
 import pandas as pd
-import math
 import random
 import sklearn
 from nltk.corpus import stopwords
 from scipy.sparse import csr_matrix
 from sklearn.model_selection import train_test_split
-#from surprise.model_selection import train_test_split
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from scipy.sparse.linalg import svds
@@ -37,7 +35,6 @@ interactions_full_df = merged_df[['user_id', 'recipe_id', 'rating']]
 interactions_train_df, interactions_test_df = train_test_split(interactions_full_df, test_size=.20)
 print('# interactions on Train set: %d' % len(interactions_train_df))
 print('# interactions on Test set: %d' % len(interactions_test_df))
-
 
 #Indexing by user_id to speed up the searches during evaluation
 interactions_full_indexed_df = interactions_full_df.set_index('user_id')
@@ -393,9 +390,27 @@ class HybridRecommender:
 
         return recommendations_df
 
-
 hybrid_recommender_model = HybridRecommender(content_based_recommender_model, cf_recommender_model, recipe_df, cb_ensemble_weight=1.0, cf_ensemble_weight=100.0)
 print('\nEvaluating Hybrid model...')
 hybrid_global_metrics, hybrid_detailed_results_df = model_evaluator.evaluate_model(hybrid_recommender_model)
 print('Global metrics:\n%s' % hybrid_global_metrics)
 #print(hybrid_detailed_results_df.head(5))
+
+#plot graph
+global_metrics_df = pd.DataFrame([cb_global_metrics, pop_global_metrics, cf_global_metrics, hybrid_global_metrics]).set_index('modelName')
+#print(global_metrics_df)
+ax = global_metrics_df.transpose().plot(kind='bar', figsize=(15,8))
+for p in ax.patches:
+    ax.annotate("%.3f" % p.get_height(), (p.get_x() + p.get_width() / 2., p.get_height()), ha='center', va='center', xytext=(0, 10), textcoords='offset points')
+plt.show()
+
+def inspect_interactions(person_id, test_set=True):
+    if test_set:
+        interactions_df = interactions_test_indexed_df
+    else:
+        interactions_df = interactions_train_indexed_df
+    return interactions_df.loc[person_id].merge(recipe_df, how = 'left', left_on = 'recipe_id', right_on = 'recipe_id') \
+                          .sort_values('rating', ascending = False)[['recStrength', 'recipe_id', 'recipe_name', 'ingredients', 'nutritions']]
+#inspect_interactions(3324846, test_set=False).head(5)
+#hybridmodelrecoSingleUserdf = hybrid_recommender_model.recommend_items(3324846, topn=5, verbose=True)
+#print("\nHybrid Model Show Top 5 Recommendations for user [", 3324846, "]\n", hybridmodelrecoSingleUserdf)
