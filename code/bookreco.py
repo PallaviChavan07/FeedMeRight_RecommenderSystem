@@ -13,49 +13,49 @@ class hybrid(object):
         self.user_id = user_id
         self.md = pd.read_csv('../data/original/CustomData/FinalData.csv')
         self.ratings = ratings
-        print(ratings[(ratings['user_id'] == user_id)][['user_id', 'book_id', 'rating']])
+        #print("Existing rated items for by user: \n", ratings[(ratings['user_id'] == user_id)][['user_id', 'book_id', 'rating']])
 
-        self.popularity_rating = self.popularity(self.md)
+        #self.popularity_rating = self.popularity(self.md)
         self.collaborative_rating = self.collaborative(self.ratings, self.user_id)
         self.content_rating = self.content_based(self.md, self.ratings, self.user_id)
         self.final_hybrid(self.md)
 
     # Popularity#
-    def popularity(self, md):
-        print("#################### popularity ####################")
-        fd = pd.read_csv('../data/original/CustomData/AverageRatings.csv')
-        fd1 = pd.read_csv('../data/original/CustomData/RatingsCount.csv')
-
-        fd[fd['rating'].notnull()]['rating'] = fd[fd['rating'].notnull()]['rating'].astype('float')
-        vote_averages = fd[fd['rating'].notnull()]['rating']
-        C = vote_averages.mean()
-
-        fd1[fd1['rating'].notnull()]['rating'] = fd1[fd1['rating'].notnull()]['rating'].astype('float')
-        vote_counts = fd1[fd1['rating'].notnull()]['rating']
-        m = len(vote_counts)
-
-        md['ratings_count'] = fd1['rating']
-        md['average_rating'] = fd['rating']
-
-        qualified = md[(md['ratings_count'].notnull())][
-            ['book_id', 'title', 'authors', 'ratings_count', 'average_rating']]
-
-        qualified['ratings_count'] = qualified['ratings_count'].astype('float')
-
-        qualified['average_rating'] = qualified['average_rating'].astype('float')
-
-        qualified.shape
-
-        def weighted_rating(x):
-            v = x['ratings_count']
-            R = x['average_rating']
-            return (v / (v + m) * R) + (m / (m + v) * C)
-
-        qualified['popularity_rating'] = qualified.apply(weighted_rating, axis=1)
-        pop = qualified[['book_id', 'popularity_rating']]
-
-        print(pop.columns)
-        return pop
+    # def popularity(self, md):
+    #     print("#################### popularity ####################")
+    #     fd = pd.read_csv('../data/original/CustomData/AverageRatings.csv')
+    #     fd1 = pd.read_csv('../data/original/CustomData/RatingsCount.csv')
+    #
+    #     fd[fd['rating'].notnull()]['rating'] = fd[fd['rating'].notnull()]['rating'].astype('float')
+    #     vote_averages = fd[fd['rating'].notnull()]['rating']
+    #     C = vote_averages.mean()
+    #
+    #     fd1[fd1['rating'].notnull()]['rating'] = fd1[fd1['rating'].notnull()]['rating'].astype('float')
+    #     vote_counts = fd1[fd1['rating'].notnull()]['rating']
+    #     m = len(vote_counts)
+    #
+    #     md['ratings_count'] = fd1['rating']
+    #     md['average_rating'] = fd['rating']
+    #
+    #     qualified = md[(md['ratings_count'].notnull())][
+    #         ['book_id', 'title', 'authors', 'ratings_count', 'average_rating']]
+    #
+    #     qualified['ratings_count'] = qualified['ratings_count'].astype('float')
+    #
+    #     qualified['average_rating'] = qualified['average_rating'].astype('float')
+    #
+    #     qualified.shape
+    #
+    #     def weighted_rating(x):
+    #         v = x['ratings_count']
+    #         R = x['average_rating']
+    #         return (v / (v + m) * R) + (m / (m + v) * C)
+    #
+    #     qualified['popularity_rating'] = qualified.apply(weighted_rating, axis=1)
+    #     pop = qualified[['book_id', 'popularity_rating']]
+    #
+    #     print(pop.columns)
+    #     return pop
 
     ### Collaborative ##
     def collaborative(self, ratings, user_id):
@@ -83,6 +83,7 @@ class hybrid(object):
         cf.columns = ['book_id', 'cf_rating']
 
         print(cf.columns)
+        print("# of content ratings computed:", len(cf['cf_rating']))
         return cf
 
     ##### CONTENT ######
@@ -158,45 +159,51 @@ class hybrid(object):
         num1 = pd.DataFrame(data=content_ratings[0:, 0:])
         frames = [num, num1]
 
-        content_rating = pd.concat(frames, axis=1)
-        content_rating.columns = ['book_id', 'content_rating']
-        # print(content_rating.shape)
-        # print(content_rating)
+        cb = pd.concat(frames, axis=1)
+        cb.columns = ['book_id', 'content_rating']
 
-        print(content_rating.columns)
-        return content_rating
+        print(cb.columns)
+        print("# of content ratings computed:", len(cb['content_rating']))
+        return cb
 
     ##### final_hybrid ######
     def final_hybrid(self, md):
         print("#################### final_hybrid ####################")
         hyb = md[['book_id']]
         title = md[['book_id', 'title']]
-
         hyb = hyb.merge(title, on='book_id')
         hyb = hyb.merge(self.ratings, on='book_id')
         hyb = hyb.merge(self.collaborative_rating, on='book_id')
-        hyb = hyb.merge(self.popularity_rating, on='book_id')
+        #hyb = hyb.merge(self.popularity_rating, on='book_id')
         hyb = hyb.merge(self.content_rating, on='book_id')
-        hyb = hyb[['book_id', 'title', 'rating', 'cf_rating', 'popularity_rating', 'content_rating']]
+        hyb = hyb[['book_id', 'title', 'rating', 'cf_rating', 'content_rating']]
 
         def weighted_rating(x):
-            v = x['cf_rating']
-            R = x['popularity_rating']
-            c = x['content_rating']
-            return 0.4 * v + 0.2 * R + 0.4 * c
+            cf = x['cf_rating'] * 0.4
+            #pr = x['popularity_rating'] * 0.2
+            cb = x['content_rating'] * 0.4
+            return cf + cb
 
         hyb['hyb_rating'] = hyb.apply(weighted_rating, axis=1)
         hyb = hyb.sort_values('hyb_rating', ascending=False).head(999)
+
+        # after all the work is done, drop rows of item already rated book ids by user_id
+        user_alreadyRatedBookId = ratings[(ratings['user_id'] == self.user_id)][['book_id']]
+        # Get all indexes
+        indexNames = hyb[hyb['book_id'].isin(user_alreadyRatedBookId['book_id'].tolist())].index
+        #print("user_alreadyRatedBookId: ", user_alreadyRatedBookId['book_id'].tolist())
+        #print("hyb_book_ids: ", hyb['book_id'].tolist())
+        # Delete these row indexes from dataFrame
+        hyb.drop(indexNames, inplace=True)
+        hyb.drop_duplicates('book_id', inplace=True)
+
+        hyb.columns = ['Book ID', 'Title', 'Original', 'Collaborative', 'Content', 'Hybrid']
         pd.set_option("display.max_rows", None, "display.max_columns", None)
-        hyb.columns = ['Book ID', 'Title', 'Original Rating', 'Collaborative Rating', 'Popularity Rating', 'Content Rating',
-                       'Hybrid Rating']
+        print("# of hybrid ratings computed:", len(hyb['Hybrid']))
+        print("\nShow ratings grid: \n", hyb)
 
-        print(len(hyb['Hybrid Rating']))
-        print(hyb)
-
-print("------------------------------Welcome to the Book Recommendation Engine---------------------------\n")
 ratings = pd.read_csv('../data/original/CustomData/ratings.csv')
-ratings = ratings[1:300]
+ratings = ratings[1:10000]
 # taking only the first 100000 ratings
 userId = 25
 print('\n----------------Welcome User ' + str(userId) + '-------------------')
