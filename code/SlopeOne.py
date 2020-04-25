@@ -11,7 +11,7 @@ def Slopeone(recipe_df, train_rating_df, pd, benchmark):
     print("\n###### Compute SlopeOne ######")
     df = pd.merge(recipe_df, train_rating_df, on='recipe_id', how='inner')
     reader = Reader(rating_scale=(1, 5))
-    data = Dataset.load_from_df(df[['user_id', 'recipe_name', 'rating']], reader)
+    data = Dataset.load_from_df(df[['user_id', 'recipe_id', 'rating']], reader)
     trainSet, testSet = train_test_split(data, test_size=.2, random_state=0)
 
     algo = SlopeOne()
