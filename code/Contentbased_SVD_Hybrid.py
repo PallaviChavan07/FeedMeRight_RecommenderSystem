@@ -37,6 +37,9 @@ import math
 # print('# interactions on Train set: %d' % len(interactions_train_df))
 # print('# interactions on Test set: %d' % len(interactions_test_df))
 
+#Top-N accuracy metrics consts
+EVAL_RANDOM_SAMPLE_NON_INTERACTED_ITEMS = 5
+
 #New Code Start
 recipe_df = pd.read_csv('../data/small_10k/export_rated_recipes_set.csv')
 #print(recipe_df.head(5))
@@ -48,7 +51,7 @@ print(interactions_df.head(5))
 users_interactions_count_df = interactions_df.groupby(['user_id', 'recipe_id']).size().groupby('user_id').size()
 print('# users: %d' % len(users_interactions_count_df))
 #users_with_enough_interactions_df = users_interactions_count_df[users_interactions_count_df >= 5].reset_index()[['user_id']]
-users_with_enough_interactions_df = users_interactions_count_df[users_interactions_count_df >= 0].reset_index()[['user_id']]
+users_with_enough_interactions_df = users_interactions_count_df[users_interactions_count_df >= 20].reset_index()[['user_id']]
 print('# users with at least 5 interactions: %d' % len(users_with_enough_interactions_df))
 print('# of interactions: %d' % len(interactions_df))
 interactions_from_selected_users_df = interactions_df.merge(users_with_enough_interactions_df, how = 'right', left_on = 'user_id', right_on = 'user_id')
@@ -74,9 +77,6 @@ def get_items_interacted(user_id, interactions_df):
         interacted_items = None
 
     return set(interacted_items if type(interacted_items) == pd.Series else [interacted_items])
-
-#Top-N accuracy metrics consts
-EVAL_RANDOM_SAMPLE_NON_INTERACTED_ITEMS = 100
 
 class ModelEvaluator:
     def get_not_interacted_items_sample(self, user_id, sample_size, seed=42):
@@ -218,7 +218,7 @@ def build_users_profiles():
 user_profiles = build_users_profiles()
 print("\nTotal User Profiles: ", len(user_profiles))
 #print(user_profiles)
-myprofile = user_profiles[3324846]
+#myprofile = user_profiles[3324846]
 #print(myprofile.shape)
 #print(pd.DataFrame(sorted(zip(tfidf_feature_names, user_profiles[3324846].flatten().tolist()), key=lambda x: -x[1])[:20], columns=['token', 'relevance']))
 #myprofile = user_profiles[682828]
