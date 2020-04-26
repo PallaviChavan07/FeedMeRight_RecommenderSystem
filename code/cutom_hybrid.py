@@ -254,11 +254,11 @@ class ContentBasedRecommender:
 content_based_recommender_model = ContentBasedRecommender(recipe_df)
 pd.set_option("display.max_rows", None, "display.max_columns", None)
 print('\nEvaluating Content-Based Filtering model...')
-cb_global_metrics, cb_detailed_results_df, users_rec_df = model_evaluator.evaluate_model(content_based_recommender_model)
+cb_global_metrics, cb_detailed_results_df, users_cb_recs_df = model_evaluator.evaluate_model(content_based_recommender_model)
 print('Global metrics:\n%s' % cb_global_metrics)
 print("\n", cb_detailed_results_df.head(5))
-#print(users_rec_df.head(5))
-if users_rec_df is not None: print("Printing recommendation df for ", test_user_id, " :\n", users_rec_df.loc[users_rec_df['user_id'] == test_user_id].head(10))
+#print(users_cb_recs_df.head(5))
+#if users_cb_recs_df is not None: print("Printing recommendation df for ", test_user_id, " :\n", users_cb_recs_df.loc[users_cb_recs_df['user_id'] == test_user_id].head(10))
 
 ########################################## SURPRISE SVD ##########################################
 from surprise import SVDpp
@@ -268,7 +268,6 @@ from surprise.model_selection import train_test_split
 from code import Evaluators, Recipe_Reco_SingleUser, Top5_Recipe_Reco_PerUser
 
 def SVDplusplus():
-    print("\n###### Compute SVDplusplus ######")
     # Read Data
     recipe_df = pd.read_csv('../data/small_10k/export_rated_recipes_set.csv')
     train_rating_df = pd.read_csv('../data/small_10k/core-data-train_rating.csv')
@@ -297,10 +296,8 @@ def SVDplusplus():
     precisionAt5 = sum(prec for prec in precisions.values()) / len(precisions)
     recallAt5 = sum(rec for rec in recalls.values()) / len(recalls)
 
-    svd_metrics = {'precision@5': precisionAt5,
-                      'precision@10': precisionAt10,
-                      'recall@5': recallAt5,
-                      'recall@10': recallAt10}
+    svd_metrics = {'precision@5': precisionAt5, 'precision@10': precisionAt10,
+                   'recall@5': recallAt5, 'recall@10': recallAt10}
 
     svd_df = pd.DataFrame(columns = ['user_id', 'recipe_id', 'svd_rating'])
     for uid, iid, true_r, est, _ in predictions:
@@ -314,7 +311,37 @@ def SVDplusplus():
     #Recipe_Reco_SingleUser.GetSingleUserRecipeReco(df, algo, test_user_id)
     return svd_metrics, svd_df
 
-print('\nEvaluating Content-Based Filtering model...')
-svd_metrics, user_svd_pred_df = SVDplusplus()
+print('\nEvaluating SVD model...')
+svd_metrics, users_svd_pred_df = SVDplusplus()
 print('SVD metrics:\n', svd_metrics)
-if user_svd_pred_df is not None: print("Printing pred df for ", test_user_id, " :\n", user_svd_pred_df.loc[user_svd_pred_df['user_id'] == test_user_id].head(10))
+#print(users_svd_pred_df.head(5))
+#if users_svd_pred_df is not None: print("Printing pred df for ", test_user_id, " :\n", users_svd_pred_df.loc[users_svd_pred_df['user_id'] == test_user_id].head(10))
+
+########################################## HYBRID WEIGHTED RATING ##########################################
+print('\nRunning hybrid model...')
+#because content base DF has almsot all recipe ids (for any given user) while SVD only computes few, "OUTER JOIN" cb df on svd df.
+singleuser_svd_df = users_svd_pred_df.loc[users_svd_pred_df['user_id'] == test_user_id]
+singleuser_cb_df = users_cb_recs_df.loc[users_cb_recs_df['user_id'] == test_user_id]
+hyb = singleuser_cb_df.merge(singleuser_svd_df, how='outer', left_on='recipe_id', right_on='recipe_id').fillna(0.0)
+#hyb = users_cb_recs_df.merge(users_svd_pred_df, how='outer', left_on='recipe_id', right_on='recipe_id').fillna(0.0)
+#print(hyb.columns.tolist())
+
+def weighted_rating(x):
+    cf = x['svd_rating'] * 0.7
+    cb = x['cb_rating'] * 0.3
+    return cf + cb
+
+hyb['hyb_rating'] = hyb.apply(weighted_rating, axis=1)
+hyb = hyb.sort_values('hyb_rating', ascending=False)
+
+# after all the work is done, drop already rated recipes ids by user_id
+user_alreadyRatedRecipeId = train_rating_df[(train_rating_df['user_id'] == test_user_id)][['recipe_id']]
+# Get all indexes
+indexNames = hyb[hyb['recipe_id'].isin(user_alreadyRatedRecipeId['recipe_id'].tolist())].index
+print("user_alreadyRatedBookId: ", user_alreadyRatedRecipeId['recipe_id'].tolist())
+# Delete these row indexes from dataFrame
+hyb.drop(indexNames, inplace=True)
+#hyb.drop_duplicates('recipe_id', inplace=True)
+
+print("\n# of hybrid ratings computed:", len(hyb['hyb_rating']))
+print("Show ratings grid: \n", hyb.head(25))
