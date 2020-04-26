@@ -10,9 +10,9 @@ import code.CoClustering as coclust
 import code.Hybrid as hyd
 
 #Read Data
-recipe_df = pd.read_csv('../data/small_10k/export_rated_recipes_set.csv')
-train_rating_df = pd.read_csv('../data/small_10k/core-data-train_rating.csv')
-test_rating_df = pd.read_csv('../data/small_10k/core-data-test_rating.csv')
+recipe_df = pd.read_csv('../data/original/export_rated_recipes_set.csv')
+train_rating_df = pd.read_csv('../data/original/core-data-train_rating.csv')
+test_rating_df = pd.read_csv('../data/original/core-data-test_rating.csv')
 
 #stats after duplicates (if any) removal
 train_rating_df.drop_duplicates(inplace=True)
