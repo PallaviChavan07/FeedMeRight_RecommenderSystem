@@ -12,7 +12,13 @@ from scipy.sparse.linalg import svds
 from sklearn.preprocessing import MinMaxScaler
 import matplotlib.pyplot as plt
 import math
+import sys
+from datetime import datetime
+old_stdout = sys.stdout
 
+filename = datetime.now().strftime('mylogfile_%b-%d-%Y_%H%M.log')
+log_file = open("../logs/%s" %filename,"w")
+sys.stdout = log_file
 # recipe_df = pd.read_csv('../data/small_10k/export_rated_recipes_set.csv')
 # train_rating_df = pd.read_csv('../data/small_10k/core-data-train_rating.csv')
 # test_rating_df = pd.read_csv('../data/small_10k/core-data-test_rating.csv')
@@ -38,20 +44,22 @@ import math
 # print('# interactions on Test set: %d' % len(interactions_test_df))
 
 #Top-N accuracy metrics consts
-EVAL_RANDOM_SAMPLE_NON_INTERACTED_ITEMS = 5
+EVAL_RANDOM_SAMPLE_NON_INTERACTED_ITEMS = 50
 
 #New Code Start
-recipe_df = pd.read_csv('../data/small_10k/export_rated_recipes_set.csv')
+recipe_df = pd.read_csv('../data/original/export_rated_recipes_set.csv')
+recipe_df = recipe_df.head(20000)
 #print(recipe_df.head(5))
 
-train_rating_df = pd.read_csv('../data/small_10k/core-data-train_rating.csv')
+train_rating_df = pd.read_csv('../data/original/core-data-train_rating.csv')
+train_rating_df = train_rating_df.head(20000)
 merged_df = pd.merge(recipe_df, train_rating_df, on='recipe_id', how='inner')
 interactions_df = merged_df[['user_id', 'recipe_id', 'rating']]
 print(interactions_df.head(5))
 users_interactions_count_df = interactions_df.groupby(['user_id', 'recipe_id']).size().groupby('user_id').size()
 print('# users: %d' % len(users_interactions_count_df))
 #users_with_enough_interactions_df = users_interactions_count_df[users_interactions_count_df >= 5].reset_index()[['user_id']]
-users_with_enough_interactions_df = users_interactions_count_df[users_interactions_count_df >= 20].reset_index()[['user_id']]
+users_with_enough_interactions_df = users_interactions_count_df[users_interactions_count_df >= 50].reset_index()[['user_id']]
 print('# users with at least 5 interactions: %d' % len(users_with_enough_interactions_df))
 print('# of interactions: %d' % len(interactions_df))
 interactions_from_selected_users_df = interactions_df.merge(users_with_enough_interactions_df, how = 'right', left_on = 'user_id', right_on = 'user_id')
@@ -394,7 +402,9 @@ global_metrics_df = pd.DataFrame([cb_global_metrics, cf_global_metrics, hybrid_g
 ax = global_metrics_df.transpose().plot(kind='bar', figsize=(15,8))
 for p in ax.patches:
     ax.annotate("%.3f" % p.get_height(), (p.get_x() + p.get_width() / 2., p.get_height()), ha='center', va='center', xytext=(0, 10), textcoords='offset points')
-plt.show()
+#plt.show()
+plotfile = datetime.now().strftime('plot_%b-%d-%Y_%H%M.pdf')
+plt.savefig('../plots/%s' %plotfile)
 
 def inspect_interactions(person_id, test_set=True):
     if test_set:
@@ -406,3 +416,11 @@ def inspect_interactions(person_id, test_set=True):
 #inspect_interactions(3324846, test_set=False).head(5)
 #hybridmodelrecoSingleUserdf = hybrid_recommender_model.recommend_items(3324846, topn=5, verbose=True)
 #print("\nHybrid Model Show Top 5 Recommendations for user [", 3324846, "]\n", hybridmodelrecoSingleUserdf)
+
+
+
+
+
+
+sys.stdout = old_stdout
+log_file.close()
