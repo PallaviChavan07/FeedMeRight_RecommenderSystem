@@ -8,11 +8,10 @@ NUMBER_OF_FACTORS_MF = 15
 
 ########################################## COLLABORATIVE FILTERING BASED ##########################################
 class CFRecommender:
-    MODEL_NAME = 'Collaborative Filtering'
+    MODEL_NAME = 'Collaborative SVD Matrix'
     def __init__(self, recipe_df=None, interactions_train_df=None, interactions_full_indexed_df=None, interactions_train_indexed_df=None, interactions_test_indexed_df=None):
         # Creating a sparse pivot table with users in rows and items in columns
-        users_items_pivot_matrix_df = interactions_train_df.pivot(index='user_id', columns='recipe_id',
-                                                                  values='rating').fillna(0)
+        users_items_pivot_matrix_df = interactions_train_df.pivot(index='user_id', columns='recipe_id', values='rating').fillna(0)
         users_items_pivot_matrix_df.head(10)
 
         users_items_pivot_matrix = users_items_pivot_matrix_df
@@ -33,8 +32,7 @@ class CFRecommender:
         all_user_predicted_ratings_norm = (all_user_predicted_ratings - all_user_predicted_ratings.min()) / (
                     all_user_predicted_ratings.max() - all_user_predicted_ratings.min())
         # Converting the reconstructed matrix back to a Pandas dataframe
-        cf_preds_df = pd.DataFrame(all_user_predicted_ratings_norm, columns=users_items_pivot_matrix_df.columns,
-                                   index=users_ids).transpose()
+        cf_preds_df = pd.DataFrame(all_user_predicted_ratings_norm, columns=users_items_pivot_matrix_df.columns, index=users_ids).transpose()
         # print("CF log:", cf_preds_df.head(5))
         # print("CF log:", len(cf_preds_df.columns))
 

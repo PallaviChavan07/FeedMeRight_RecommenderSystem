@@ -45,7 +45,6 @@ print('# interactions on Test set: %d' % len(interactions_test_df))
 interactions_full_indexed_df = interactions_full_df.set_index('user_id')
 interactions_train_indexed_df = interactions_train_df.set_index('user_id')
 interactions_test_indexed_df = interactions_test_df.set_index('user_id')
-
 print("--- Total data execution time is %s min ---" %((time.time() - start_time)/60))
 
 #create instance for model evaluator to be used in respective recommenders
