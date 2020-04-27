@@ -12,16 +12,22 @@ from scipy.sparse.linalg import svds
 from sklearn.preprocessing import MinMaxScaler
 import matplotlib.pyplot as plt
 
+import time
+start_time = time.time()
+
 #New Code Start
-test_user_id = 9259
-#Top-N accuracy metrics consts
-EVAL_RANDOM_SAMPLE_NON_INTERACTED_ITEMS = 50
+TEST_USER_ID = 9259
+MIN_USERS_INTERACTIONS = 10
 pd.set_option("display.max_rows", None, "display.max_columns", None)
 
-recipe_df = pd.read_csv('../data/small_10k/export_rated_recipes_set.csv')
+recipe_df = pd.read_csv('../data/original/export_rated_recipes_set.csv')
 #print(recipe_df.head(5))
-train_rating_df = pd.read_csv('../data/small_10k/core-data-train_rating.csv')
+#recipe_df = recipe_df.head(10000)
+
+train_rating_df = pd.read_csv('../data/original/core-data-train_rating.csv')
+#train_rating_df = train_rating_df.head(10000)
 merged_df = pd.merge(recipe_df, train_rating_df, on='recipe_id', how='inner')
+
 interactions_df = merged_df[['user_id', 'recipe_id', 'rating']]
 #interactions_df = interactions_df.set_index('user_id')
 #print(interactions_df.head(5))
@@ -30,138 +36,93 @@ interactions_df = merged_df[['user_id', 'recipe_id', 'rating']]
 users_interactions_count_df = interactions_df.groupby(['user_id', 'recipe_id']).size().groupby('user_id').size()
 print('# users: %d' % len(users_interactions_count_df))
 #users_with_enough_interactions_df = users_interactions_count_df[users_interactions_count_df >= 5].reset_index()[['user_id']]
-users_with_enough_interactions_df = users_interactions_count_df[users_interactions_count_df >= 0].reset_index()[['user_id']]
+users_with_enough_interactions_df = users_interactions_count_df[users_interactions_count_df >= MIN_USERS_INTERACTIONS].reset_index()[['user_id']]
 print('# users with at least 5 interactions: %d' % len(users_with_enough_interactions_df))
 print('# of interactions: %d' % len(interactions_df))
 interactions_from_selected_users_df = interactions_df.merge(users_with_enough_interactions_df, how = 'right', left_on = 'user_id', right_on = 'user_id')
 print('# of interactions from users with at least 5 interactions: %d' % len(interactions_from_selected_users_df))
 
 interactions_full_df = interactions_from_selected_users_df.groupby(['user_id', 'recipe_id'])['rating'].sum().reset_index()
-print('# of unique user/item interactions: %d' % len(interactions_full_df))
-interactions_train_df, interactions_test_df = train_test_split(interactions_full_df, test_size=0.20)
-print('# interactions on Train set: %d' % len(interactions_train_df))
-print('# interactions on Test set: %d' % len(interactions_test_df))
-#New Code End
-
-#Indexing by user_id to speed up the searches during evaluation
 interactions_full_indexed_df = interactions_full_df.set_index('user_id')
-interactions_train_indexed_df = interactions_train_df.set_index('user_id')
-interactions_test_indexed_df = interactions_test_df.set_index('user_id')
-#print(interactions_test_indexed_df.loc[test_user_id])
-
-def get_items_interacted(user_id, interactions_df):
-    # Get the user's data and merge in the information.
-    try:
-        interacted_items = interactions_df.loc[user_id]['recipe_id']
-    except:
-        interacted_items = None
-
-    return set(interacted_items if type(interacted_items) == pd.Series else [interacted_items])
-
-class ModelEvaluator:
-    def get_not_interacted_items_sample(self, user_id, sample_size, seed=42):
-        interacted_items = get_items_interacted(user_id, interactions_full_indexed_df)
-        all_items = set(recipe_df['recipe_id'])
-        non_interacted_items = all_items - interacted_items
-
-        random.seed(seed)
-        non_interacted_items_sample = random.sample(non_interacted_items, sample_size)
-        return set(non_interacted_items_sample)
-
-    def _verify_hit_top_n(self, item_id, recommended_items, topn):
-        try:
-            index = next(i for i, c in enumerate(recommended_items) if c == item_id)
-        except:
-            index = -1
-        hit = int(index in range(0, topn))
-        return hit, index
-
-    def evaluate_model_for_user(self, model, user_id):
-        # Getting the items in test set
-        interacted_values_testset = interactions_test_indexed_df.loc[user_id]
-        if type(interacted_values_testset['recipe_id']) == pd.Series:
-            person_interacted_items_testset = set(interacted_values_testset['recipe_id'])
-        else:
-            person_interacted_items_testset = set([int(interacted_values_testset['recipe_id'])])
-        interacted_items_count_testset = len(person_interacted_items_testset)
-
-        # Getting a ranked recommendation list from a model for a given user
-        person_recs_df = model.recommend_items(user_id, items_to_ignore=get_items_interacted(user_id, interactions_train_indexed_df),topn=10000000000)
-        #if user_id == test_user_id: print("person_recs_df \n", person_recs_df[['user_id', 'recipe_id', 'cb_rating']])
-
-        hits_at_5_count = 0
-        hits_at_10_count = 0
-        # For each item the user has interacted in test set
-        for item_id in person_interacted_items_testset:
-            # Getting a random sample (100) items the user has not interacted
-            # (to represent items that are assumed to be no relevant to the user)
-            non_interacted_items_sample = self.get_not_interacted_items_sample(user_id, sample_size=EVAL_RANDOM_SAMPLE_NON_INTERACTED_ITEMS, seed=item_id % (2 ** 32))
-
-            # Combining the current interacted item with the 100 random items
-            items_to_filter_recs = non_interacted_items_sample.union(set([item_id]))
-
-            # Filtering only recommendations that are either the interacted item or from a random sample of 100 non-interacted items
-            if not person_recs_df is None:
-                valid_recs_df = person_recs_df[person_recs_df['recipe_id'].isin(items_to_filter_recs)]
-                valid_recs = valid_recs_df['recipe_id'].values
-            else:
-                #this way we can still get person_metrics
-                valid_recs = None
-
-            # Verifying if the current interacted item is among the Top-N recommended items
-            hit_at_5, index_at_5 = self._verify_hit_top_n(item_id, valid_recs, 5)
-            hits_at_5_count += hit_at_5
-            hit_at_10, index_at_10 = self._verify_hit_top_n(item_id, valid_recs, 10)
-            hits_at_10_count += hit_at_10
-
-        # Recall is the rate of the interacted items that are ranked among the Top-N recommended items,
-        # when mixed with a set of non-relevant items
-        recall_at_5 = hits_at_5_count / float(interacted_items_count_testset)
-        recall_at_10 = hits_at_10_count / float(interacted_items_count_testset)
-
-        person_metrics = {'hits@5_cnt': hits_at_5_count,
-                          'hits@10_cnt': hits_at_10_count,
-                          'interacted_cnt': interacted_items_count_testset,
-                          'recall@5': recall_at_5,
-                          'recall@10': recall_at_10}
-
-        #if person_recs_df is None: print(person_metrics)
-        return person_metrics, person_recs_df
-
-    def evaluate_model(self, model):
-        # print('Running evaluation for users')
-        people_metrics = []
-        users_recs_df = pd.DataFrame()
-        for idx, user_id in enumerate(list(interactions_test_indexed_df.index.unique().values)):
-            # if idx % 100 == 0 and idx > 0:
-            #    print('%d users processed' % idx)
-            person_metrics, singleuser_recs_df = self.evaluate_model_for_user(model, user_id)
-            person_metrics['_user_id'] = user_id
-            people_metrics.append(person_metrics)
-            if not singleuser_recs_df is None: users_recs_df = pd.concat([users_recs_df, singleuser_recs_df[['user_id', 'recipe_id', 'cb_rating']]])
-        print('%d users processed' % idx)
-        print('users_recs_list shape: ', users_recs_df.shape)
-
-        detailed_results_df = pd.DataFrame(people_metrics).sort_values('interacted_cnt', ascending=False)
-
-        global_recall_at_5 = detailed_results_df['hits@5_cnt'].sum() / float(detailed_results_df['interacted_cnt'].sum())
-        global_recall_at_10 = detailed_results_df['hits@10_cnt'].sum() / float(detailed_results_df['interacted_cnt'].sum())
-
-        global_metrics = {'modelName': model.get_model_name(), 'recall@5': global_recall_at_5, 'recall@10': global_recall_at_10}
-        return global_metrics, detailed_results_df, users_recs_df
-
-model_evaluator = ModelEvaluator()
+print('# of unique user/item interactions: %d' % len(interactions_full_indexed_df))
 
 ########################################## CONTENT BASED ##########################################
 #Ignoring stopwords (words with no semantics) from English and Portuguese (as we have a corpus with mixed languages)
 stopwords_list = stopwords.words('english')
 
 #Trains a model whose vectors size is 5000, composed by the main unigrams and bigrams found in the corpus, ignoring stopwords
-vectorizer = TfidfVectorizer(analyzer='word', ngram_range=(1, 1), min_df=0.003, max_df=0.5, stop_words=stopwords_list)
+vectorizer = TfidfVectorizer(analyzer='word', ngram_range=(1, 1), min_df=0.003, max_df=0.80, stop_words=stopwords_list)
 
 item_ids = recipe_df['recipe_id'].tolist()
 tfidf_matrix = vectorizer.fit_transform(recipe_df['recipe_name'] + "" + recipe_df['ingredients'])
 tfidf_feature_names = vectorizer.get_feature_names()
+
+def get_recipes_interacted(user_id):
+    # Get the user's data and merge in the information.
+    try:
+        interacted_items = interactions_full_indexed_df.loc[user_id]
+    except:
+        interacted_items = None
+    return interacted_items
+
+def cb_evaluate_model_for_user(user_id, users_cb_recs_df, k=5):
+    if users_cb_recs_df is None:
+        return {'p_recall': 0, 'a_recall': 0, 'user_top_k_recos_count': 0, 'user_interated_relevant_count': 0, 'k': k}
+
+    #get top k recos for the user from the complete users_cb_recs_df
+    user_top_k_recos = users_cb_recs_df.head(k)
+
+    #get recipes already interacted by user
+    user_interact_recipes_df = get_recipes_interacted(user_id)
+    #print("user_interact_recipes_df: ", len(user_interact_recipes_df), " for user_id ", user_id)
+
+    #filter out recipes with rating > 3.5 which is our threshold for good vs bad recipes
+    user_interated_relevant_df = user_interact_recipes_df.loc[user_interact_recipes_df['rating'] >= 3.5]
+    #print("user_interated_relevant_df: ", len(user_interated_relevant_df))
+
+    #merge top k recommended recipes with filtered user interacted recipes to get relevant recommended
+    relevant_and_reco_items_df = user_top_k_recos.merge(user_interated_relevant_df, how='inner', on='recipe_id')
+    #print("relevant_and_reco_items_df:\n", relevant_and_reco_items_df)
+
+    user_top_k_recos_count = len(user_top_k_recos)
+    p_recall = len(relevant_and_reco_items_df) / user_top_k_recos_count if user_top_k_recos_count != 0 else 1
+    #print("Pallavi dumb recall", p_recall)
+
+    # Recall@K: Proportion of relevant items that are recommended
+    n_rel_and_rec_k = len(relevant_and_reco_items_df)
+    n_rel = len(user_interated_relevant_df)
+    a_recall = n_rel_and_rec_k / n_rel if n_rel != 0 else 1
+    #print("amod yet to correct but dumb recall", a_recall)
+
+    person_metrics = {'p_recall': p_recall,
+                      'a_recall': a_recall,
+                      'user_top_k_recos_count': user_top_k_recos_count,
+                      'user_interated_relevant_count': n_rel,
+                      'k': k}
+
+    #print(person_metrics)
+    return person_metrics
+
+def cb_recommendatons(cb_objname):
+    users_metrics = []
+    for idx, user_id in enumerate(list(interactions_full_indexed_df.index.unique().values)):
+        users_recs_df = cb_objname.recommend_items(user_id, items_to_ignore=[], topn=10000000000)
+        # print(user_id, " Size of users_recs_df: ", users_recs_df.shape)
+        singleuser_metric = cb_evaluate_model_for_user(user_id, users_recs_df, k=5)
+        users_metrics.append(singleuser_metric)
+    print('%d users processed' % idx)
+    print('users_metrics: ', len(users_metrics))
+
+    p_detailed_results_df = pd.DataFrame(users_metrics).sort_values('user_top_k_recos_count', ascending=False)
+    p_global_recall = p_detailed_results_df['p_recall'].sum() / len(p_detailed_results_df['p_recall'])
+
+    a_detailed_results_df = pd.DataFrame(users_metrics).sort_values('user_interated_relevant_count', ascending=False)
+    a_global_recall = a_detailed_results_df['a_recall'].sum() / len(a_detailed_results_df['a_recall'])
+
+    global_metrics = {'modelName': cb_objname.get_model_name(), 'p_global_recall': p_global_recall,
+                      'a_global_recall': a_global_recall}
+
+    return global_metrics
 
 def get_item_profile(item_id):
     idx = item_ids.index(item_id)
@@ -193,7 +154,7 @@ def build_users_profile(user_id, interactions_indexed_df):
     return user_profile_norm
 
 def build_users_profiles():
-    interactions_indexed_df = interactions_train_df[interactions_train_df['recipe_id'].isin(recipe_df['recipe_id'])].set_index('user_id')
+    interactions_indexed_df = interactions_full_indexed_df[interactions_full_indexed_df['recipe_id'].isin(recipe_df['recipe_id'])]
     user_profiles = {}
     for user_id in interactions_indexed_df.index.unique():
         user_profiles[user_id] = build_users_profile(user_id, interactions_indexed_df)
@@ -202,7 +163,7 @@ def build_users_profiles():
 user_profiles = build_users_profiles()
 print("\nTotal User Profiles: ", len(user_profiles))
 #print(user_profiles)
-myprofile = user_profiles[3324846]
+#myprofile = user_profiles[3324846]
 #print(myprofile.shape)
 #print(pd.DataFrame(sorted(zip(tfidf_feature_names, user_profiles[3324846].flatten().tolist()), key=lambda x: -x[1])[:20], columns=['token', 'relevance']))
 #myprofile = user_profiles[682828]
@@ -241,107 +202,23 @@ class ContentBasedRecommender:
 
         # Ignores items the user has already interacted
         similar_items_filtered = list(filter(lambda x: x[0] not in items_to_ignore, similar_items))
-        recommendations_df = pd.DataFrame(similar_items_filtered, columns=['recipe_id', 'cb_rating']).head(topn)
+        #print("similar_items_filtered \n", similar_items_filtered)
+        recommendations_df = pd.DataFrame(similar_items_filtered, columns=['recipe_id', 'cb_score']).head(topn)
         if self.items_df is None:
             raise Exception('"items_df" is required in verbose mode')
 
         recommendations_df = recommendations_df.merge(self.items_df, how='left', left_on='recipe_id', right_on='recipe_id')[
-            ['cb_rating', 'recipe_id', 'recipe_name', 'ingredients', 'nutritions']]
-        recommendations_df['user_id'] = user_id
+            ['cb_score', 'recipe_id']]
+        #recommendations_df['user_id'] = user_id
 
+        #print(recommendations_df.shape)
         return recommendations_df
 
 content_based_recommender_model = ContentBasedRecommender(recipe_df)
 pd.set_option("display.max_rows", None, "display.max_columns", None)
 print('\nEvaluating Content-Based Filtering model...')
-cb_global_metrics, cb_detailed_results_df, users_cb_recs_df = model_evaluator.evaluate_model(content_based_recommender_model)
-print('Global metrics:\n%s' % cb_global_metrics)
-print("\n", cb_detailed_results_df.head(5))
+cb_metrics = cb_recommendatons(content_based_recommender_model)
+print('Global metrics:\n%s' % cb_metrics)
 #print(users_cb_recs_df.head(5))
-#if users_cb_recs_df is not None: print("Printing recommendation df for ", test_user_id, " :\n", users_cb_recs_df.loc[users_cb_recs_df['user_id'] == test_user_id].head(10))
 
-########################################## SURPRISE SVD ##########################################
-from surprise import SVDpp
-from surprise import Reader
-from surprise import Dataset
-from surprise.model_selection import train_test_split
-from code import Evaluators, Recipe_Reco_SingleUser, Top5_Recipe_Reco_PerUser
-
-def SVDplusplus():
-    # Read Data
-    recipe_df = pd.read_csv('../data/small_10k/export_rated_recipes_set.csv')
-    train_rating_df = pd.read_csv('../data/small_10k/core-data-train_rating.csv')
-
-    # stats after duplicates (if any) removal
-    train_rating_df.drop_duplicates(inplace=True)
-    #print('we have', train_rating_df.shape[0], 'ratings')
-    #print('the number of unique users we have is:', len(train_rating_df.user_id.unique()))
-    #print('the number of unique recipes we have is:', len(train_rating_df.recipe_id.unique()))
-    #print("The median user rated %d books." % train_rating_df.user_id.value_counts().median())
-    #print('The max rating is: %d' % train_rating_df.rating.max(), "and the min rating is: %d" % train_rating_df.rating.min())
-    df = pd.merge(recipe_df, train_rating_df, on='recipe_id', how='inner')
-    reader = Reader(rating_scale=(1, 5))
-    data = Dataset.load_from_df(df[['user_id', 'recipe_id', 'rating']], reader)
-    trainSet, testSet = train_test_split(data, test_size=.2, random_state=0)
-
-    algo = SVDpp()
-    algo.fit(trainSet)
-    predictions = algo.test(testSet)
-    #print("SURPRISE SVD PREDS\n", predictions)
-
-    precisions, recalls = Evaluators.precision_recall_at_k(predictions)
-    precisionAt10 = sum(prec for prec in precisions.values()) / len(precisions)
-    recallAt10 = sum(rec for rec in recalls.values()) / len(recalls)
-    precisions, recalls = Evaluators.precision_recall_at_k(predictions, k=5)
-    precisionAt5 = sum(prec for prec in precisions.values()) / len(precisions)
-    recallAt5 = sum(rec for rec in recalls.values()) / len(recalls)
-
-    svd_metrics = {'precision@5': precisionAt5, 'precision@10': precisionAt10,
-                   'recall@5': recallAt5, 'recall@10': recallAt10}
-
-    svd_df = pd.DataFrame(columns = ['user_id', 'recipe_id', 'svd_rating'])
-    for uid, iid, true_r, est, _ in predictions:
-        tempdf = pd.DataFrame([[uid, iid, est]], columns=['user_id', 'recipe_id', 'svd_rating'])
-        svd_df = pd.concat([svd_df, tempdf])
-
-    print('users_recs_list shape: ', svd_df.shape)
-
-    #Display Results
-    #Top5_Recipe_Reco_PerUser.DisplayResults(predictions)
-    #Recipe_Reco_SingleUser.GetSingleUserRecipeReco(df, algo, test_user_id)
-    return svd_metrics, svd_df
-
-print('\nEvaluating SVD model...')
-svd_metrics, users_svd_pred_df = SVDplusplus()
-print('SVD metrics:\n', svd_metrics)
-#print(users_svd_pred_df.head(5))
-#if users_svd_pred_df is not None: print("Printing pred df for ", test_user_id, " :\n", users_svd_pred_df.loc[users_svd_pred_df['user_id'] == test_user_id].head(10))
-
-########################################## HYBRID WEIGHTED RATING ##########################################
-print('\nRunning hybrid model...')
-#because content base DF has almsot all recipe ids (for any given user) while SVD only computes few, "OUTER JOIN" cb df on svd df.
-singleuser_svd_df = users_svd_pred_df.loc[users_svd_pred_df['user_id'] == test_user_id]
-singleuser_cb_df = users_cb_recs_df.loc[users_cb_recs_df['user_id'] == test_user_id]
-hyb = singleuser_cb_df.merge(singleuser_svd_df, how='outer', left_on='recipe_id', right_on='recipe_id').fillna(0.0)
-#hyb = users_cb_recs_df.merge(users_svd_pred_df, how='outer', left_on='recipe_id', right_on='recipe_id').fillna(0.0)
-#print(hyb.columns.tolist())
-
-def weighted_rating(x):
-    cf = x['svd_rating'] * 0.7
-    cb = x['cb_rating'] * 0.3
-    return cf + cb
-
-hyb['hyb_rating'] = hyb.apply(weighted_rating, axis=1)
-hyb = hyb.sort_values('hyb_rating', ascending=False)
-
-# after all the work is done, drop already rated recipes ids by user_id
-user_alreadyRatedRecipeId = train_rating_df[(train_rating_df['user_id'] == test_user_id)][['recipe_id']]
-# Get all indexes
-indexNames = hyb[hyb['recipe_id'].isin(user_alreadyRatedRecipeId['recipe_id'].tolist())].index
-print("user_alreadyRatedBookId: ", user_alreadyRatedRecipeId['recipe_id'].tolist())
-# Delete these row indexes from dataFrame
-hyb.drop(indexNames, inplace=True)
-#hyb.drop_duplicates('recipe_id', inplace=True)
-
-print("\n# of hybrid ratings computed:", len(hyb['hyb_rating']))
-print("Show ratings grid: \n", hyb.head(25))
+print("--- Total content based execution time is %s min ---" %((time.time() - start_time)/60))
