@@ -96,11 +96,11 @@ class HybridRecommender:
         #print(recs_df.head(5))
 
         # Computing a hybrid recommendation score based on CF and CB scores
-        recs_df['recStrengthHybrid'] = (recs_df['recStrengthCB'] * CB_SCORE_RATING_FACTOR * CB_WEIGHT) + (recs_df['recStrengthCF'] * CF_WEIGHT)
+        recs_df['recStrength'] = (recs_df['recStrengthCB'] * CB_SCORE_RATING_FACTOR * CB_WEIGHT) + (recs_df['recStrengthCF'] * CF_WEIGHT)
 
         # Sorting recommendations by hybrid score
-        recommendations_df = recs_df.sort_values('recStrengthHybrid', ascending=False).head(topn)
-        recommendations_df = recommendations_df.merge(self.recipe_df, how='left', left_on='recipe_id', right_on='recipe_id')[['recStrengthHybrid', 'recipe_id', 'recipe_name', 'ingredients', 'nutritions']]
+        recommendations_df = recs_df.sort_values('recStrength', ascending=False).head(topn)
+        recommendations_df = recommendations_df.merge(self.recipe_df, how='left', left_on='recipe_id', right_on='recipe_id')[['recStrength', 'recipe_id', 'recipe_name', 'ingredients', 'nutritions']]
 
         return recommendations_df
 
@@ -110,10 +110,10 @@ hybrid_metrics, hybrid_detailed_results_df = model_evaluator.evaluate_model(hybr
 print('Hybrid Metrics:\n%s' % hybrid_metrics)
 
 #plot graph
-global_metrics_df = pd.DataFrame([cb_metrics, cf_metrics, hybrid_metrics]).set_index('modelName')
+global_metrics_df = pd.DataFrame([cb_metrics, cf_metrics, hybrid_metrics]).set_index('model')
 #print(global_metrics_df)
-ax = global_metrics_df.transpose().plot(kind='bar', figsize=(15,8))
+ax = global_metrics_df.transpose().plot(kind='bar', color=['red', 'green', 'blue'])
 for p in ax.patches:
-    ax.annotate("%.3f" % p.get_height(), (p.get_x() + p.get_width() / 2., p.get_height()), ha='center', va='center', xytext=(0, 10), textcoords='offset points')
+    ax.annotate("%.3f" % p.get_height(), (p.get_x() + p.get_width() / 2., p.get_height()), ha='center', va='center', xytext=(0, 5), textcoords='offset points')
 plt.show()
 print("--- Total Hybrid based model execution time is %s min ---" %((time.time() - start_time)/60))
