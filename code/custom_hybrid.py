@@ -4,7 +4,7 @@ import time
 from sklearn.model_selection import train_test_split
 from code.custom_evaluator import ModelEvaluator
 from code.custom_svd import CFRecommender
-from code.cutom_contentbased import ContentBasedRecommender
+from code.custom_contentbased import ContentBasedRecommender
 
 start_time = time.time()
 #Constants
@@ -30,10 +30,10 @@ users_interactions_count_df = interactions_df.groupby(['user_id', 'recipe_id']).
 print('# users: %d' % len(users_interactions_count_df))
 #users_with_enough_interactions_df = users_interactions_count_df[users_interactions_count_df >= 5].reset_index()[['user_id']]
 users_with_enough_interactions_df = users_interactions_count_df[users_interactions_count_df >= MIN_USERS_INTERACTIONS].reset_index()[['user_id']]
-print('# users with at least 5 interactions: %d' % len(users_with_enough_interactions_df))
+print('# users with at least ', MIN_USERS_INTERACTIONS, ' interactions: %d' % len(users_with_enough_interactions_df))
 print('# of interactions: %d' % len(interactions_df))
 interactions_from_selected_users_df = interactions_df.merge(users_with_enough_interactions_df, how = 'right', left_on = 'user_id', right_on = 'user_id')
-print('# of interactions from users with at least 5 interactions: %d' % len(interactions_from_selected_users_df))
+print('# of interactions from users with at least ', MIN_USERS_INTERACTIONS, ' interactions: %d' % len(interactions_from_selected_users_df))
 
 interactions_full_df = interactions_from_selected_users_df.groupby(['user_id', 'recipe_id'])['rating'].sum().reset_index()
 print('# of unique user/item interactions: %d' % len(interactions_full_df))
