@@ -148,9 +148,9 @@ class ModelEvaluator:
             accuracy[k] = (n_rel_and_rec_k + n_irrel_and_rec_k) / k
 
 
-        person_metrics = {'recall@5': recall[5], 'interacted_count': n_rel[5], 'precision@5': precision[5], 'accuracy@5': accuracy[5],
-                          'recall@10': recall[10], 'interacted_count': n_rel[10], 'precision@10': precision[10], 'accuracy@10': accuracy[10],
-                          'recall@20': recall[20], 'interacted_count': n_rel[20], 'precision@20': precision[20], 'accuracy@20': accuracy[20]}
+        person_metrics = {'recall@5': recall[5], 'precision@5': precision[5], 'accuracy@5': accuracy[5],
+                          'recall@10': recall[10], 'precision@10': precision[10], 'accuracy@10': accuracy[10],
+                          'recall@20': recall[20], 'precision@20': precision[20], 'accuracy@20': accuracy[20]}
 
         # print(person_metrics)
         return person_metrics
@@ -164,7 +164,8 @@ class ModelEvaluator:
             users_metrics.append(singleuser_metric)
         print('%d users processed' % idx)
 
-        detailed_results_df = pd.DataFrame(users_metrics).sort_values('interacted_count', ascending=False)
+        #detailed_results_df = pd.DataFrame(users_metrics).sort_values('interacted_count', ascending=False)
+        detailed_results_df = pd.DataFrame(users_metrics)
         global_recall_5 = detailed_results_df['recall@5'].sum() / len(detailed_results_df['recall@5'])
         global_precision_5 = detailed_results_df['precision@5'].sum() / len(detailed_results_df['precision@5'])
         global_accuracy_5 = detailed_results_df['accuracy@5'].sum() / len(detailed_results_df['accuracy@5'])
@@ -180,7 +181,7 @@ class ModelEvaluator:
         global_metrics = {'model': model.get_model_name(), 'recall@5': global_recall_5, 'precision@5': global_precision_5, 'accuracy@5': global_accuracy_5,
                           'recall@10': global_recall_10, 'precision@10': global_precision_10, 'accuracy@10': global_accuracy_10,
                           'recall@20': global_recall_20, 'precision@20': global_precision_20, 'accuracy@20': global_accuracy_20}
-        detailed_results_df = detailed_results_df
+
         # else:
         #     people_metrics = []
         #     for idx, user_id in enumerate(list(self.interactions_test_indexed_df.index.unique().values)):

@@ -10,6 +10,7 @@ start_time = time.time()
 #Constants
 TEST_USER_ID = 9259
 MIN_USERS_INTERACTIONS = 5
+MAX_USERS_INTERACTIONS = 50
 CB_WEIGHT = 0.3
 CF_WEIGHT = 0.7
 CB_SCORE_RATING_FACTOR = 5.0
@@ -17,9 +18,9 @@ pd.set_option("display.max_rows", None, "display.max_columns", None)
 
 #data
 recipe_df = pd.read_csv('../data/original/export_rated_recipes_set.csv')
-recipe_df = recipe_df.head(10000)
+recipe_df = recipe_df.head(20000)
 train_rating_df = pd.read_csv('../data/original/core-data-train_rating.csv')
-train_rating_df = train_rating_df.head(10000)
+train_rating_df = train_rating_df.head(20000)
 merged_df = pd.merge(recipe_df, train_rating_df, on='recipe_id', how='inner')
 interactions_df = merged_df[['user_id', 'recipe_id', 'rating']]
 #interactions_df = interactions_df.set_index('user_id')
@@ -29,11 +30,12 @@ interactions_df = merged_df[['user_id', 'recipe_id', 'rating']]
 users_interactions_count_df = interactions_df.groupby(['user_id', 'recipe_id']).size().groupby('user_id').size()
 print('# users: %d' % len(users_interactions_count_df))
 #users_with_enough_interactions_df = users_interactions_count_df[users_interactions_count_df >= 5].reset_index()[['user_id']]
-users_with_enough_interactions_df = users_interactions_count_df[users_interactions_count_df >= MIN_USERS_INTERACTIONS].reset_index()[['user_id']]
-print('# users with at least ', MIN_USERS_INTERACTIONS, ' interactions: %d' % len(users_with_enough_interactions_df))
+#users_with_enough_interactions_df = users_interactions_count_df[users_interactions_count_df >= MIN_USERS_INTERACTIONS].reset_index()[['user_id']]
+users_with_enough_interactions_df = users_interactions_count_df[(users_interactions_count_df >= MIN_USERS_INTERACTIONS) & (users_interactions_count_df < MAX_USERS_INTERACTIONS)].reset_index()[['user_id']]
+print('# users with at least', MIN_USERS_INTERACTIONS, 'interactions: %d' % len(users_with_enough_interactions_df))
 print('# of interactions: %d' % len(interactions_df))
 interactions_from_selected_users_df = interactions_df.merge(users_with_enough_interactions_df, how = 'right', left_on = 'user_id', right_on = 'user_id')
-print('# of interactions from users with at least ', MIN_USERS_INTERACTIONS, ' interactions: %d' % len(interactions_from_selected_users_df))
+print('# of interactions from users with at least', MIN_USERS_INTERACTIONS, 'interactions: %d' % len(interactions_from_selected_users_df))
 
 interactions_full_df = interactions_from_selected_users_df.groupby(['user_id', 'recipe_id'])['rating'].sum().reset_index()
 print('# of unique user/item interactions: %d' % len(interactions_full_df))
