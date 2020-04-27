@@ -1,33 +1,28 @@
 import numpy as np
 import scipy
 import pandas as pd
-import random
 import sklearn
 from nltk.corpus import stopwords
 from scipy.sparse import csr_matrix
-from sklearn.model_selection import train_test_split
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-from scipy.sparse.linalg import svds
 from sklearn.preprocessing import MinMaxScaler
-import matplotlib.pyplot as plt
 
 import time
 start_time = time.time()
 
 #New Code Start
 TEST_USER_ID = 9259
-MIN_USERS_INTERACTIONS = 10
+MIN_USERS_INTERACTIONS = 5
 pd.set_option("display.max_rows", None, "display.max_columns", None)
 
 recipe_df = pd.read_csv('../data/original/export_rated_recipes_set.csv')
 #print(recipe_df.head(5))
-#recipe_df = recipe_df.head(10000)
+recipe_df = recipe_df.head(20000)
 
 train_rating_df = pd.read_csv('../data/original/core-data-train_rating.csv')
-#train_rating_df = train_rating_df.head(10000)
+train_rating_df = train_rating_df.head(20000)
 merged_df = pd.merge(recipe_df, train_rating_df, on='recipe_id', how='inner')
-
 interactions_df = merged_df[['user_id', 'recipe_id', 'rating']]
 #interactions_df = interactions_df.set_index('user_id')
 #print(interactions_df.head(5))
