@@ -44,8 +44,7 @@ class ContentBasedRecommender:
 
     def cb_evaluate_model_for_user(self, user_id, users_cb_recs_df, k=5):
         if users_cb_recs_df is None:
-            return {'p_recall': 0, 'a_recall': 0, 'user_top_k_recos_count': 0, 'user_interated_relevant_count': 0,
-                    'k': k}
+            return {'recall@5': 0, 'interacted_count': 0, 'precision@5': 0, 'accuracy@5': 0}
 
         # get top k recos for the user from the complete users_cb_recs_df
         user_top_k_recos = users_cb_recs_df.head(k)
@@ -55,28 +54,37 @@ class ContentBasedRecommender:
         # print("user_interact_recipes_df: ", len(user_interact_recipes_df), " for user_id ", user_id)
 
         # filter out recipes with rating > 3.5 which is our threshold for good vs bad recipes
-        user_interated_relevant_df = user_interact_recipes_df.loc[user_interact_recipes_df['rating'] >= 3.5]
+        user_interated_relevant_df = user_interact_recipes_df.loc[user_interact_recipes_df['rating'] >= 3.0]
+        user_interated_irrelevant_df = user_interact_recipes_df.loc[user_interact_recipes_df['rating'] < 3.0]
         # print("user_interated_relevant_df: ", len(user_interated_relevant_df))
 
         # merge top k recommended recipes with filtered user interacted recipes to get relevant recommended
         relevant_and_reco_items_df = user_top_k_recos.merge(user_interated_relevant_df, how='inner', on='recipe_id')
         # print("relevant_and_reco_items_df:\n", relevant_and_reco_items_df)
 
-        user_top_k_recos_count = len(user_top_k_recos)
-        p_recall = len(relevant_and_reco_items_df) / user_top_k_recos_count if user_top_k_recos_count != 0 else 1
+        irrelevant_and_reco_items_df = user_top_k_recos.merge(user_interated_irrelevant_df, how='inner', on='recipe_id')
+        #user_top_k_recos_count = len(user_top_k_recos)
+        #p_recall = len(relevant_and_reco_items_df) / user_top_k_recos_count if user_top_k_recos_count != 0 else 1
         # print("Pallavi dumb recall", p_recall)
 
         # Recall@K: Proportion of relevant items that are recommended
-        n_rel_and_rec_k = len(relevant_and_reco_items_df)
+        n_rel_and_rec_k = len(relevant_and_reco_items_df)  # TP
         n_rel = len(user_interated_relevant_df)
-        a_recall = n_rel_and_rec_k / n_rel if n_rel != 0 else 1
+        n_irrel_and_rec_k = len(irrelevant_and_reco_items_df)  # TN
+        recallAt5 = n_rel_and_rec_k / n_rel if n_rel != 0 else 1
         # print("amod yet to correct but dumb recall", a_recall)
 
-        person_metrics = {'p_recall': p_recall,
-                          'a_recall': a_recall,
-                          'user_top_k_recos_count': user_top_k_recos_count,
-                          'user_interated_relevant_count': n_rel,
-                          'k': k}
+        # Number of recommended items in top k (Whose score is higher than 0.5 (relevant))
+        n_rec_k = len(user_top_k_recos.loc[user_top_k_recos['recStrength'] >= 0.5])
+        # Precision@K: Proportion of recommended items that are relevant
+        precisionAt5 = n_rel_and_rec_k / n_rec_k if n_rec_k != 0 else 1
+
+        accuracyAt5 = (n_rel_and_rec_k + n_irrel_and_rec_k) / k
+
+        person_metrics = {'recall@5': recallAt5,
+                          'interacted_count': n_rel,
+                          'precision@5': precisionAt5,
+                          'accuracy@5': accuracyAt5}
 
         # print(person_metrics)
         return person_metrics

@@ -100,18 +100,15 @@ class ModelEvaluator:
                 singleuser_metric = model.cb_evaluate_model_for_user(user_id, users_recs_df, k=5)
                 users_metrics.append(singleuser_metric)
             print('%d users processed' % idx)
-            print('users_metrics: ', len(users_metrics))
+            print('\nusers_metrics: ', len(users_metrics))
 
-            p_detailed_results_df = pd.DataFrame(users_metrics).sort_values('user_top_k_recos_count', ascending=False)
-            p_global_recall = p_detailed_results_df['p_recall'].sum() / len(p_detailed_results_df['p_recall'])
+            detailed_results_df = pd.DataFrame(users_metrics).sort_values('interacted_count', ascending=False)
+            global_recall = detailed_results_df['recall@5'].sum() / len(detailed_results_df['recall@5'])
+            global_precision = detailed_results_df['precision@5'].sum() / len(detailed_results_df['precision@5'])
+            global_accuracy = detailed_results_df['accuracy@5'].sum() / len(detailed_results_df['accuracy@5'])
 
-            a_detailed_results_df = pd.DataFrame(users_metrics).sort_values('user_interated_relevant_count',
-                                                                            ascending=False)
-            a_global_recall = a_detailed_results_df['a_recall'].sum() / len(a_detailed_results_df['a_recall'])
-
-            global_metrics = {'modelName': model.get_model_name(), 'p_global_recall': p_global_recall,
-                              'recall@5': a_global_recall}
-            detailed_results_df = p_detailed_results_df
+            global_metrics = {'modelName': model.get_model_name(), 'recall@5': global_recall, 'precision@5': global_precision, 'accuracy@5': global_accuracy}
+            detailed_results_df = detailed_results_df
         else:
             people_metrics = []
             for idx, user_id in enumerate(list(self.interactions_test_indexed_df.index.unique().values)):
