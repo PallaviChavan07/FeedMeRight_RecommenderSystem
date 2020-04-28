@@ -18,9 +18,9 @@ pd.set_option("display.max_rows", None, "display.max_columns", None)
 
 #data
 recipe_df = pd.read_csv('../data/original/export_rated_recipes_set.csv')
-recipe_df = recipe_df.head(20000)
+recipe_df = recipe_df.head(10000)
 train_rating_df = pd.read_csv('../data/original/core-data-train_rating.csv')
-train_rating_df = train_rating_df.head(20000)
+train_rating_df = train_rating_df.head(10000)
 merged_df = pd.merge(recipe_df, train_rating_df, on='recipe_id', how='inner')
 interactions_df = merged_df[['user_id', 'recipe_id', 'rating']]
 #interactions_df = interactions_df.set_index('user_id')

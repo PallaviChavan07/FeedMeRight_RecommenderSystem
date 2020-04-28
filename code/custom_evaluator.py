@@ -3,6 +3,7 @@ import random
 
 #Top-N accuracy metrics consts
 EVAL_RANDOM_SAMPLE_NON_INTERACTED_ITEMS = 100
+TEST_USER_ID = 9259
 
 class ModelEvaluator:
     def __init__(self, recipe_df, interactions_full_indexed_df=None, interactions_train_indexed_df=None, interactions_test_indexed_df=None):
@@ -143,7 +144,7 @@ class ModelEvaluator:
             # Number of recommended items in top k (Whose score is higher than 0.5 (relevant))
             n_rec_k = len(user_top_k_recos.loc[user_top_k_recos['recStrength'] >= 0.3])
             # Precision@K: Proportion of recommended items that are relevant
-            precision[k] = n_rel_and_rec_k / n_rec_k if n_rec_k != 0 else 1
+            precision[k] = n_rel_and_rec_k / n_rec_k if n_rec_k != 0 else 0
 
             accuracy[k] = (n_rel_and_rec_k + n_irrel_and_rec_k) / k
 
