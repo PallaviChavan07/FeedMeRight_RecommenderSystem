@@ -2,8 +2,8 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 pd.set_option("display.max_rows", None, "display.max_columns", None)
-recipe_df = pd.read_csv('../data/original/export_rated_recipes_set.csv')
-train_rating_df = pd.read_csv('../data/original/core-data-train_rating.csv')
+recipe_df = pd.read_csv('../data/clean/recipes.csv')
+train_rating_df = pd.read_csv('../data/clean/ratings.csv')
 print("Total Interactions = ", len(train_rating_df))
 pd.value_counts(train_rating_df['rating']).plot.bar()
 #plt.plot(train_rating_df['rating'].hist)
@@ -26,7 +26,7 @@ print("max = ",max(users_interactions_count_df))
 print("min = ",min(users_interactions_count_df))
 
 # check count of number of user who have rated min 15 and max 150 recipes
-MIN_USERS_INTERACTIONS = 15
-MAX_USERS_INTERACTIONS = 120
+MIN_USERS_INTERACTIONS = 50
+MAX_USERS_INTERACTIONS = 1500
 users_with_enough_interactions_df = users_interactions_count_df[(users_interactions_count_df >= MIN_USERS_INTERACTIONS) & (users_interactions_count_df < MAX_USERS_INTERACTIONS)].reset_index()[['user_id']]
 print("users_with_enough_interactions_df = ", len(users_with_enough_interactions_df))

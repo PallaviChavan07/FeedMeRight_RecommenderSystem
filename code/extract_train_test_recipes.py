@@ -56,15 +56,19 @@ def user_data_generation(rated_recie_df, ratings_df):
     very_active_mf = 1.725
     extra_active_mf = 1.9
     users_interactions_count_df = ratings_df.groupby(['user_id', 'recipe_id']).size().groupby('user_id').size()
-    MIN_USERS_INTERACTIONS = 15
-    MAX_USERS_INTERACTIONS = 120
-    users_with_enough_interactions_df = users_interactions_count_df[ (users_interactions_count_df >= MIN_USERS_INTERACTIONS) &
-                                        (users_interactions_count_df < MAX_USERS_INTERACTIONS)].reset_index()[['user_id']]
+    MIN_USERS_INTERACTIONS = 20
+    # MAX_USERS_INTERACTIONS = 120
+    # users_with_enough_interactions_df = users_interactions_count_df[ (users_interactions_count_df >= MIN_USERS_INTERACTIONS) &
+    #                                     (users_interactions_count_df < MAX_USERS_INTERACTIONS)].reset_index()[['user_id']]
+    users_with_enough_interactions_df = users_interactions_count_df[(users_interactions_count_df >= MIN_USERS_INTERACTIONS)].reset_index()[['user_id']]
     user_df = pd.DataFrame()
-    user_df['user_id'] = list(users_with_enough_interactions_df['user_id'].head(10000))
+    #user_df['user_id'] = list(users_with_enough_interactions_df['user_id'].head(10000))
+    user_df['user_id'] = list(users_with_enough_interactions_df['user_id'].tail(10000))
     #print("user_df = ", user_df.head(4))
     print(user_df.head())
     weight_height_df = pd.read_csv('../data/original/weight-height.csv')
+    print(user_df.shape[0])
+    print(weight_height_df.shape[0])
     user_df['Gender'] = weight_height_df['Gender'].to_list()
 
     #print("length of usrs - ", len(users_df), "\n htwt = ", len(weight_height_df))

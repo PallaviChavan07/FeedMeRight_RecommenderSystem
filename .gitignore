@@ -12,6 +12,7 @@ __pycache__/
 .idea/
 /data/original/
 /data/codegenerated/
+/data/clean/
 /plots/
 /logs/
 
