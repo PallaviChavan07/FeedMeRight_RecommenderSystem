@@ -9,54 +9,53 @@ import numpy as np
 from random import seed
 from random import randint
 pd.set_option("display.max_rows", None, "display.max_columns", None)
-train_ratings_df = pd.read_csv('C:/Users/jpall/D/thesis/data_gathering/Kaggle_recipe_huge_26th March/smalldataset/core-data-train_rating.csv')
-test_ratings_df = pd.read_csv('C:/Users/jpall/D/thesis/data_gathering/Kaggle_recipe_huge_26th March/smalldataset/core-data-test_rating.csv')
-core_recipes_df = pd.read_csv('C:/Users/jpall/D/thesis/data_gathering/Kaggle_recipe_huge_26th March/smalldataset/core-data_recipe.csv')
-recipe_df = pd.read_csv('../data/original/export_rated_recipes_set.csv')
-ratings_df = pd.read_csv('../data/original/core-data-train_rating.csv')
-# print("train unique = ",len(train_recipe_ids))
-# print("test unique = ",len(test_recipe_ids))
-# print("total set unique = ",len(total_set_recipe_ids))
+train_ratings_df = pd.read_csv('../data/original/core-data-train_rating.csv')
+test_ratings_df = pd.read_csv('../data/original/core-data-test_rating.csv')
+train_test_ratings_df = pd.concat([train_ratings_df, test_ratings_df], ignore_index=True)
+core_recipes_df = pd.read_csv('../data/original/core-data_recipe.csv')
+
+def get_rated_recipes(core_recipes_df):
+    # Get all recipe ids from all interactions
+    interaction_recipe_ids = train_test_ratings_df.recipe_id.unique()
+    # Get all unique recipes from core recipes set
+    all_unique_recipe_ids = core_recipes_df.recipe_id.unique()
+    # Common recipes from interacted recipes and actual recipe data = all rated recipes
+    rated_recipe_ids = list(set(interaction_recipe_ids) & set(all_unique_recipe_ids))
+    rated_recipes_df = core_recipes_df.loc[core_recipes_df['recipe_id'].isin(rated_recipe_ids)]
+    valid_interactions_df = train_test_ratings_df.loc[train_test_ratings_df['recipe_id'].isin(rated_recipe_ids)]
+
+    print("Actual number of recipes = ", len(core_recipes_df))
+    print("all unique recipes = ", len(all_unique_recipe_ids))
+    print("rated recipes = ", len(rated_recipes_df))
+    print("interacted unique recipes = ", len(interaction_recipe_ids))
+    print("Number of interactions = ", len(train_test_ratings_df))
+    print("valid interacted recipes = ", len(valid_interactions_df))
+    return rated_recipes_df, valid_interactions_df
+
+# def get_unique_users():
+#
+#     print("user-recipe-rating interactions = ", len(ratings_df))
+#     dup_users_df = pd.DataFrame()
+#     users_df = pd.DataFrame()
+#     dup_users_df['user_id'] = ratings_df['user_id'].to_numpy()
+#     print("Number of users = ", len(dup_users_df))
+#     users_df['user_id'] = ratings_df['user_id'].unique()
+#     print("Number of unique users = ", len(users_df ))
+#     return users_df
 
 
-# In[8]:
-def get_rated_recipes():
-    train_recipe_ids = train_ratings_df.recipe_id.unique()
-    test_recipe_ids = test_ratings_df.recipe_id.unique()
-    total_set_recipe_ids = core_recipes_df.recipe_id.unique()
-    # Combine train and test sets and get unique recipe_ids from them
-    train_test_unique_ids = list(set(train_recipe_ids) | set(test_recipe_ids))
-    print(len(train_test_unique_ids))
-    rated_recipes_list = []
-    rated_nonexist_list = []
-    for train_test_id in train_test_unique_ids:
-        if train_test_id in total_set_recipe_ids:
-            rated_recipes_list.append(train_test_id)
-        else:
-            rated_nonexist_list.append(train_test_id)
-
-    print("rated recipes = ", len(rated_recipes_list))
-    print("rated nonexist recipes = ", len(rated_nonexist_list))
-    rated_recipes_set = core_recipes_df.loc[core_recipes_df['recipe_id'].isin(rated_recipes_list)]
-    rated_recipes_set.head()
-    # print(len(rated_recipes_set))
-    rated_recipes_set.to_csv( r'../data/original/export_rated_recipes_set.csv', index=False, header=True)
-
-
-def get_unique_users():
-
-    print("user-recipe-rating interactions = ", len(ratings_df))
-    dup_users_df = pd.DataFrame()
-    users_df = pd.DataFrame()
-    dup_users_df['user_id'] = ratings_df['user_id'].to_numpy()
-    print("Number of users = ", len(dup_users_df))
-    users_df['user_id'] = ratings_df['user_id'].unique()
-    print("Number of unique users = ", len(users_df ))
-    return users_df
-
-
-def bmi_calculations():
-    users_interactions_count_df = train_ratings_df.groupby(['user_id', 'recipe_id']).size().groupby('user_id').size()
+def user_data_generation(rated_recie_df, ratings_df):
+    sedentary = 1
+    lightly_active = 2
+    moderately_active = 3
+    very_active = 4
+    extra_active = 5
+    sedentary_mf = 1.2
+    lightly_active_mf = 1.375
+    moderately_active_mf = 1.55
+    very_active_mf = 1.725
+    extra_active_mf = 1.9
+    users_interactions_count_df = ratings_df.groupby(['user_id', 'recipe_id']).size().groupby('user_id').size()
     MIN_USERS_INTERACTIONS = 15
     MAX_USERS_INTERACTIONS = 120
     users_with_enough_interactions_df = users_interactions_count_df[ (users_interactions_count_df >= MIN_USERS_INTERACTIONS) &
@@ -99,26 +98,37 @@ def bmi_calculations():
         lambda row: 66 + (6.3 * row.Weight_lb) + (12.9 * row.Height_inch) - (6.8 * row.age) if (row.Gender == 'Male')
         else 655 + (4.3 * row.Weight_lb) + (4.7 * row.Height_inch) - (4.7 * row.age), axis = 1)
 
+    user_df['calories_per_day'] = user_df.apply(
+        lambda row: row.BMR * sedentary_mf  if (row.activity == sedentary)
+        else row.BMR * lightly_active_mf if (row.activity == lightly_active)
+        else row.BMR * moderately_active_mf  if (row.activity == moderately_active)
+        else row.BMR * very_active_mf if (row.activity == very_active)
+        else row.BMR * extra_active_mf, axis=1)
 
-    user_df.to_csv(r'../data/original/users.csv', index=False, header=True)
+    #user_df.to_csv(r'../data/original/clean/users.csv', index=False, header=True)
     # print("height_mtr = ", height_mtr)
     # print("weight_kgs = ", weight_kgs)
+    return user_df
 
 
-
-def clean_recipes_for_calories():
-    print(recipe_df.columns.values)
-    nutritions_lst = recipe_df['nutritions'].tolist()
+def drop_recipes_with_no_calories():
+    core_recipes_df = pd.read_csv('../data/original/core-data_recipe.csv')
+    nutritions_lst = core_recipes_df['nutritions'].tolist()
     calories_list = []
     for nut in nutritions_lst:
         nut = ast.literal_eval(nut)
-        #print("nut['calories'] == ",nut['calories']['amount'], nut['calories']['unit'])
         calories_list.append(nut['calories']['amount'])
-    recipe_df['calories'] = calories_list
-    recipe_df.to_csv(r'../data/original/recipes_with_calories.csv', index=False, header=True)
+    core_recipes_df['calories'] = calories_list
+    print("bfore removing 0 calories ", len(core_recipes_df))
+    core_recipes_df = core_recipes_df[core_recipes_df['calories'] != 0]
+    print("After removing 0 calories ", len(core_recipes_df))
+    return core_recipes_df
+    #recipe_df.to_csv(r'../data/original/recipes_with_calories.csv', index=False, header=True)
 if __name__ == '__main__':
-    #clean_recipes_for_calories()
-    #users_df = get_unique_users()
-    bmi_calculations()
-
+    core_recipes_df = drop_recipes_with_no_calories()
+    rated_recie_df, valid_interactions_df = get_rated_recipes(core_recipes_df)
+    user_df = user_data_generation(rated_recie_df, valid_interactions_df)
+    rated_recie_df.to_csv(r'../data/clean/recipes.csv', index=False, header=True)
+    valid_interactions_df.to_csv(r'../data/clean/ratings.csv', index=False, header=True)
+    user_df.to_csv(r'../data/clean/users.csv', index=False, header=True)
 
