@@ -3,9 +3,10 @@ import scipy
 import pandas as pd
 import sklearn
 from nltk.corpus import stopwords
+from scipy import sparse
 from scipy.sparse import csr_matrix
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.metrics.pairwise import cosine_similarity, linear_kernel
 from sklearn.preprocessing import MinMaxScaler
 
 ########################################## CONTENT BASED ##########################################
@@ -16,7 +17,15 @@ class ContentBasedRecommender:
         vectorizer = TfidfVectorizer(analyzer='word', ngram_range=(1, 1), min_df=0.003, max_df=0.80, stop_words=stopwords.words('english'))
         recipe_ids = recipe_df['recipe_id'].tolist()
 
-        self.tfidf_matrix = vectorizer.fit_transform(recipe_df['recipe_name'] + "" + recipe_df['ingredients'])
+        self.tfidf_matrix = vectorizer.fit_transform( recipe_df['cook_method'] + "" +recipe_df['ingredients'])
+        #self.tfidf_matrix = vectorizer.fit_transform(recipe_df['ingredients'])
+        #self.tfidf_matrix = vectorizer.fit_transform(recipe_df['cook_method'])
+
+        # # This is your original matrix
+        # ingredients_matrix = vectorizer.fit_transform(recipe_df['ingredients'])
+        # # This is the other features
+        # cook_method_matrix = vectorizer.fit_transform(recipe_df['cook_method'])
+        # self.tfidf_matrix = sparse.hstack((ingredients_matrix, cook_method_matrix))
         self.tfidf_feature_names = vectorizer.get_feature_names()
         self.recipe_ids = recipe_ids
         self.recipe_df = recipe_df
@@ -76,7 +85,8 @@ class ContentBasedRecommender:
     def _get_similar_items_to_user_profile(self, user_id):
         # Computes the cosine similarity between the user profile and all item profiles
         try:
-            cosine_similarities = cosine_similarity(self.user_profiles[user_id], self.tfidf_matrix)
+            #cosine_similarities = cosine_similarity(self.user_profiles[user_id], self.tfidf_matrix)
+            cosine_similarities = linear_kernel(self.user_profiles[user_id], self.tfidf_matrix)
             # Gets the top similar items
             similar_indices = cosine_similarities.argsort().flatten()
             #print("Take only top ", len(similar_indices), "similar items")

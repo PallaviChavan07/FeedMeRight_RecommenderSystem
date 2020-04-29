@@ -1,13 +1,18 @@
 ### TODO
 ### Check how many ratings are given by each user.. and select maybe only those users who have given approximately similar number of recipes.
 
-#Extract train test recipes from toalt set of recipes. Because we want to work on only recipes which are rated by user. 
+#Extract train test recipes from toalt set of recipes. Because we want to work on only recipes which are rated by user.
+import nltk
 import pandas as pd
 import json
 import ast
 import numpy as np
 from random import seed
 from random import randint
+nltk.download(['stopwords','wordnet'])
+from nltk.stem.porter import PorterStemmer
+from nltk.corpus import stopwords
+
 pd.set_option("display.max_rows", None, "display.max_columns", None)
 train_ratings_df = pd.read_csv('../data/original/core-data-train_rating.csv')
 test_ratings_df = pd.read_csv('../data/original/core-data-test_rating.csv')
@@ -149,9 +154,55 @@ def drop_recipes_with_no_calories():
     print("After removing 0 calories ", len(core_recipes_df))
     return core_recipes_df
     #recipe_df.to_csv(r'../data/original/recipes_with_calories.csv', index=False, header=True)
+
+def get_recipes_with_cook_methods(core_recipe_df):
+    cooking_methods_corpus = ['al dente', 'bake', 'barbecue', 'baste', 'batter', 'beat', 'blanch', 'blend', 'boil',
+                              'broil', 'caramelize', 'chop', 'clarify', 'cream', 'cure', 'deglaze', 'degrease', 'dice',
+                              'dissolve', 'dredge', 'drizzle', 'dust', 'fillet', 'flake', 'flambe', 'fold', 'fricassee',
+                              'fry', 'garnish', 'glaze', 'grate', 'gratin', 'grill', 'grind', 'julienne', 'knead',
+                              'lukewarm', 'marinate', 'meuniere', 'mince', 'mix', 'pan-broil', 'pan-fry', 'parboil',
+                              'pare', 'peel', 'pickle', 'pinch', 'pit', 'planked', 'plump', 'poach', 'puree', 'reduce',
+                              'refresh', 'render', 'roast', 'saute', 'scald', 'scallop', 'score', 'sear', 'shred',
+                              'sift', 'simmer', 'skim', 'steam', 'steep', 'sterilize', 'stew', 'stir', 'toss', 'truss',
+                              'whip']
+    directions_dict_lst = core_recipe_df['cooking_directions'].tolist()
+    print("directions_dict_lst len = ", len(directions_dict_lst))
+
+    directions_lst = []
+    for direction_dict in directions_dict_lst:
+        direction_dict = ast.literal_eval(direction_dict)
+        directions_lst.append(direction_dict['directions'])
+    cooking_methods_list = []
+    for data in directions_lst:
+        # function to split text into word
+        tokens = nltk.word_tokenize(data)
+        nltk.download('stopwords')
+        # print("After tokenization", tokens)
+        # remove all tokens that are not alphabetic
+        words = [word for word in tokens if word.isalpha()]
+        # filter out stop words
+        stop_words = set(stopwords.words('english'))
+        words = [w for w in words if not w in stop_words]
+        # print(words)
+        # stemming of words
+        porter = PorterStemmer()
+        stemmed = [porter.stem(word) for word in words]
+        # print("stemmed = ",stemmed)
+        clean_list = [each_string.lower() for each_string in stemmed]
+        common = list(set(clean_list) & set(cooking_methods_corpus))
+        recipe_cooking_methods = ""
+        for i in common:
+            recipe_cooking_methods = recipe_cooking_methods + " " + i
+        cooking_methods_list.append(recipe_cooking_methods.strip())
+    cooking_methods_list = ["nothing" if x == '' else x for x in cooking_methods_list]
+    core_recipes_df['cook_method'] = cooking_methods_list
+    return core_recipes_df
+
+
 if __name__ == '__main__':
     core_recipes_df = drop_recipes_with_no_calories()
-    rated_recie_df, valid_interactions_df = get_rated_recipes(core_recipes_df)
+    recipes_with_cook_methods = get_recipes_with_cook_methods(core_recipes_df)
+    rated_recie_df, valid_interactions_df = get_rated_recipes(recipes_with_cook_methods)
     user_df = user_data_generation(rated_recie_df, valid_interactions_df)
     rated_recie_df.to_csv(r'../data/clean/recipes.csv', index=False, header=True)
     valid_interactions_df.to_csv(r'../data/clean/ratings.csv', index=False, header=True)
