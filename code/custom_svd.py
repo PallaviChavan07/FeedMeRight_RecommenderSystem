@@ -9,7 +9,7 @@ NUMBER_OF_FACTORS_MF = 15
 ########################################## COLLABORATIVE FILTERING BASED ##########################################
 class CFRecommender:
     MODEL_NAME = 'Collaborative SVD Matrix'
-    def __init__(self, recipe_df=None, interactions_train_df=None, interactions_full_indexed_df=None, interactions_train_indexed_df=None, interactions_test_indexed_df=None):
+    def __init__(self, recipe_df=None, interactions_train_df=None, interactions_full_indexed_df=None, interactions_train_indexed_df=None, interactions_test_indexed_df=None, user_df=None):
         # Creating a sparse pivot table with users in rows and items in columns
         users_items_pivot_matrix_df = interactions_train_df.pivot(index='user_id', columns='recipe_id', values='rating').fillna(0)
         users_items_pivot_matrix_df.head(10)
@@ -41,9 +41,22 @@ class CFRecommender:
         self.interactions_full_indexed_df = interactions_full_indexed_df
         self.interactions_train_indexed_df = interactions_train_indexed_df
         self.interactions_test_indexed_df = interactions_test_indexed_df
+        self.user_df = user_df
 
     def get_model_name(self):
         return self.MODEL_NAME
+
+    def get_recommendation_for_user_calorie_count(self, cal_rec_df, user_id):
+        # print("CF: Before calories filter = ", recommendations_df.shape)
+        # get calories required for user
+        user_calories_per_day = self.user_df.loc[self.user_df['user_id'] == user_id]['calories_per_day'].values
+        # print("CF: user calories per day", user_calories_per_day, type(user_calories_per_day), user_calories_per_day[0])
+        # divide calories into 1/3rd part
+        user_calories = user_calories_per_day[0] / 3
+        # consider only those recipes which have calories less than required calories for that user
+        cal_rec_df = cal_rec_df[cal_rec_df['calories'] <= user_calories]
+        # print("CF: After calories filter = ", recommendations_df.shape)
+        return cal_rec_df
 
     def recommend_items(self, user_id, items_to_ignore=[], topn=10, verbose=False):
         # Get and sort the user's predictions
@@ -54,6 +67,6 @@ class CFRecommender:
 
         # Recommend the highest predicted rating movies that the user hasn't seen yet.
         recommendations_df = sorted_user_predictions[~sorted_user_predictions['recipe_id'].isin(items_to_ignore)].sort_values('recStrength', ascending=False).head(topn)
-        recommendations_df = recommendations_df.merge(self.recipe_df, how='left', left_on='recipe_id', right_on='recipe_id')[['recStrength', 'recipe_id', 'recipe_name', 'ingredients', 'nutritions']]
-
+        recommendations_df = recommendations_df.merge(self.recipe_df, how='left', left_on='recipe_id', right_on='recipe_id')[['recStrength', 'recipe_id', 'recipe_name', 'ingredients', 'nutritions', 'calories']]
+        recommendations_df = self.get_recommendation_for_user_calorie_count(recommendations_df, user_id)
         return recommendations_df

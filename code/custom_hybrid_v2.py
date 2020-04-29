@@ -52,7 +52,7 @@ print("--- Total content based execution time is %s min ---" %((time.time() - st
 
 #collaborative based
 print('\nEvaluating Collaborative Filtering (SVD Matrix Factorization) model...')
-cf_recommender_model = CFRecommender(recipe_df, interactions_train_df, interactions_full_indexed_df, interactions_train_indexed_df, interactions_test_indexed_df)
+cf_recommender_model = CFRecommender(recipe_df, interactions_train_df, interactions_full_indexed_df, interactions_train_indexed_df, interactions_test_indexed_df, user_df)
 cf_metrics, cf_detailed_results_df = model_evaluator.evaluate_model(cf_recommender_model)
 print('Collaborative SVD Matric Factorization Metrics:\n%s' % cf_metrics)
 #print("CF Log: Cols in cf_detailed_results_df", list(cf_detailed_results_df.columns.values))
@@ -62,13 +62,26 @@ print("--- Total Collaborative SVD based execution time is %s min ---" %((time.t
 ########################################## HYBRID FILTERING BASED ##########################################
 class HybridRecommender:
     MODEL_NAME = 'Hybrid'
-    def __init__(self, cb_rec_model, cf_rec_model, recipe_df):
+    def __init__(self, cb_rec_model, cf_rec_model, recipe_df, user_df):
         self.cb_rec_model = cb_rec_model
         self.cf_rec_model = cf_rec_model
         self.recipe_df = recipe_df
+        self.user_df = user_df
 
     def get_model_name(self):
         return self.MODEL_NAME
+
+    def get_recommendation_for_user_calorie_count(self, cal_rec_df, user_id):
+        # print("Hybrid: Before calories filter = ", recommendations_df.shape)
+        # get calories required for user
+        user_calories_per_day = self.user_df.loc[self.user_df['user_id'] == user_id]['calories_per_day'].values
+        # print("Hybrid: user calories per day", user_calories_per_day, type(user_calories_per_day), user_calories_per_day[0])
+        # divide calories into 1/3rd part
+        user_calories = user_calories_per_day[0] / 3
+        # consider only those recipes which have calories less than required calories for that user
+        cal_rec_df = cal_rec_df[cal_rec_df['calories'] <= user_calories]
+        # print("Hybrid: After calories filter = ", recommendations_df.shape)
+        return cal_rec_df
 
     def recommend_items(self, user_id, items_to_ignore=[], topn=10, verbose=False):
         # Getting the top-1000 Content-based filtering recommendations
@@ -92,12 +105,12 @@ class HybridRecommender:
 
         # Sorting recommendations by hybrid score
         recommendations_df = recs_df.sort_values('recStrength', ascending=False).head(topn)
-        recommendations_df = recommendations_df.merge(self.recipe_df, how='left', left_on='recipe_id', right_on='recipe_id')[['recStrength', 'recipe_id', 'recipe_name', 'ingredients', 'nutritions']]
-
+        recommendations_df = recommendations_df.merge(self.recipe_df, how='left', left_on='recipe_id', right_on='recipe_id')[['recStrength', 'recipe_id', 'recipe_name', 'ingredients', 'nutritions', 'calories']]
+        recommendations_df = self.get_recommendation_for_user_calorie_count(recommendations_df, user_id)
         return recommendations_df
 
 print('\nEvaluating Hybrid model...')
-hybrid_recommender_model = HybridRecommender(content_based_recommender_model, cf_recommender_model, recipe_df)
+hybrid_recommender_model = HybridRecommender(content_based_recommender_model, cf_recommender_model, recipe_df, user_df)
 hybrid_metrics, hybrid_detailed_results_df = model_evaluator.evaluate_model(hybrid_recommender_model)
 print('Hybrid Metrics:\n%s' % hybrid_metrics)
 

@@ -87,6 +87,18 @@ class ContentBasedRecommender:
 
         return similar_items
 
+    def get_recommendation_for_user_calorie_count(self, cal_rec_df, user_id):
+        # print("CB: Before calories filter = ", recommendations_df.shape)
+        # get calories required for user
+        user_calories_per_day = self.user_df.loc[self.user_df['user_id'] == user_id]['calories_per_day'].values
+        # print("CB: user calories per day", user_calories_per_day, type(user_calories_per_day), user_calories_per_day[0])
+        # divide calories into 1/3rd part
+        user_calories = user_calories_per_day[0] / 3
+        # consider only those recipes which have calories less than required calories for that user
+        cal_rec_df = cal_rec_df[cal_rec_df['calories'] <= user_calories]
+        # print("CB: After calories filter = ", recommendations_df.shape)
+        return cal_rec_df
+
     def recommend_items(self, user_id, items_to_ignore=[], topn=10, verbose=False):
         try:
             similar_items = self._get_similar_items_to_user_profile(user_id)
@@ -101,14 +113,6 @@ class ContentBasedRecommender:
 
         #recommendations_df = recommendations_df.merge(self.recipe_df, how='left', left_on='recipe_id', right_on='recipe_id')[['recStrength', 'recipe_id']]
         recommendations_df = recommendations_df.merge(self.recipe_df, how='left', left_on='recipe_id', right_on='recipe_id')[['recStrength', 'recipe_id', 'recipe_name', 'ingredients', 'nutritions', 'calories']]
-        print("Before calories filter = ", recommendations_df.shape)
-        # get calories required for user
-        user_calories_per_day = self.user_df.loc[self.user_df['user_id'] == user_id]['calories_per_day'].values
-        print("user calories per day", user_calories_per_day, type(user_calories_per_day), user_calories_per_day[0])
-        # divide calories into 1/3rd part
-        user_calories = user_calories_per_day[0] / 3
-        # consider only those recipes which have calories less than required calories for that user
-        recommendations_df = recommendations_df[recommendations_df['calories'] <= user_calories ]
-        print("After calories filter = ", recommendations_df.shape)
-        #print(recommendations_df.shape)
+
+        recommendations_df = self.get_recommendation_for_user_calorie_count(recommendations_df, user_id)
         return recommendations_df
