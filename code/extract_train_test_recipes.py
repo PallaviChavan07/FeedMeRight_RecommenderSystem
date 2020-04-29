@@ -24,12 +24,12 @@ def get_rated_recipes(core_recipes_df):
     rated_recipes_df = core_recipes_df.loc[core_recipes_df['recipe_id'].isin(rated_recipe_ids)]
     valid_interactions_df = train_test_ratings_df.loc[train_test_ratings_df['recipe_id'].isin(rated_recipe_ids)]
 
-    print("Actual number of recipes = ", len(core_recipes_df))
-    print("all unique recipes = ", len(all_unique_recipe_ids))
-    print("rated recipes = ", len(rated_recipes_df))
-    print("interacted unique recipes = ", len(interaction_recipe_ids))
-    print("Number of interactions = ", len(train_test_ratings_df))
-    print("valid interacted recipes = ", len(valid_interactions_df))
+    # print("Actual number of recipes = ", len(core_recipes_df))
+    # print("all unique recipes = ", len(all_unique_recipe_ids))
+    # print("rated recipes = ", len(rated_recipes_df))
+    # print("interacted unique recipes = ", len(interaction_recipe_ids))
+    # print("Number of interactions = ", len(train_test_ratings_df))
+    # print("valid interacted recipes = ", len(valid_interactions_df))
     return rated_recipes_df, valid_interactions_df
 
 # def get_unique_users():
@@ -55,16 +55,37 @@ def user_data_generation(rated_recie_df, ratings_df):
     moderately_active_mf = 1.55
     very_active_mf = 1.725
     extra_active_mf = 1.9
-    users_interactions_count_df = ratings_df.groupby(['user_id', 'recipe_id']).size().groupby('user_id').size()
-    MIN_USERS_INTERACTIONS = 20
-    # MAX_USERS_INTERACTIONS = 120
-    # users_with_enough_interactions_df = users_interactions_count_df[ (users_interactions_count_df >= MIN_USERS_INTERACTIONS) &
-    #                                     (users_interactions_count_df < MAX_USERS_INTERACTIONS)].reset_index()[['user_id']]
-    users_with_enough_interactions_df = users_interactions_count_df[(users_interactions_count_df >= MIN_USERS_INTERACTIONS)].reset_index()[['user_id']]
+
+    # Minimum count of users rated recipes
+    # Eka recipe la kamit kami 50 users ne rating dila aahe. # 1 recipe to 50 recipes
+    count_of_users_rated_atleas_50 = 50
+    filter_recipes = ratings_df['recipe_id'].value_counts() > count_of_users_rated_atleas_50
+
+    print("filter_recipes = ", len(filter_recipes))
+    filter_recipes = filter_recipes[filter_recipes].index.tolist()
+    #
+    MIN_USER_INTERACTION = 10
+    MAX_USER_INTERACTION = 25
+    filter_users = (ratings_df['user_id'].value_counts() > MIN_USER_INTERACTION) & (
+                ratings_df['user_id'].value_counts() <= MAX_USER_INTERACTION)
+    print("filter_users ", len(filter_users))
+    filter_users = filter_users[filter_users].index.tolist()
+    filtered_ratings_df = ratings_df[
+        (ratings_df['recipe_id'].isin(filter_recipes)) & (ratings_df['user_id'].isin(filter_users))]
+    print("length of filtered_ratings_df = ", len(filtered_ratings_df))
+    print("length of unique users in filtered_ratings_df = ", len(filtered_ratings_df.user_id.unique()))
+    #######
+
+    # users_interactions_count_df = ratings_df.groupby(['user_id', 'recipe_id']).size().groupby('user_id').size()
+    # MIN_USERS_INTERACTIONS = 20
+    # # MAX_USERS_INTERACTIONS = 120
+    # # users_with_enough_interactions_df = users_interactions_count_df[ (users_interactions_count_df >= MIN_USERS_INTERACTIONS) &
+    # #                                     (users_interactions_count_df < MAX_USERS_INTERACTIONS)].reset_index()[['user_id']]
+    # users_with_enough_interactions_df = users_interactions_count_df[(users_interactions_count_df >= MIN_USERS_INTERACTIONS)].reset_index()[['user_id']]
     user_df = pd.DataFrame()
     #user_df['user_id'] = list(users_with_enough_interactions_df['user_id'].head(10000))
-    user_df['user_id'] = list(users_with_enough_interactions_df['user_id'].tail(10000))
-    #print("user_df = ", user_df.head(4))
+    user_df['user_id'] = list(filtered_ratings_df.user_id.unique())[:10000]
+    print("user_df = ", user_df.shape)
     print(user_df.head())
     weight_height_df = pd.read_csv('../data/original/weight-height.csv')
     print(user_df.shape[0])

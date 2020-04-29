@@ -21,41 +21,23 @@ recipe_df = pd.read_csv('../data/clean/recipes.csv')
 rating_df = pd.read_csv('../data/clean/ratings.csv')
 user_df = pd.read_csv('../data/clean/users.csv')
 
-MIN_RECIPE_RATINGS = 50
-filter_recipes = rating_df['recipe_id'].value_counts() > MIN_RECIPE_RATINGS
-filter_recipes = filter_recipes[filter_recipes].index.tolist()
-MIN_USER_RATINGS = 50
-filter_users = rating_df['user_id'].value_counts() > MIN_USER_RATINGS
-filter_users = filter_users[filter_users].index.tolist()
-rating_df_clean = rating_df[(rating_df['recipe_id'].isin(filter_recipes)) & (rating_df['user_id'].isin(filter_users))]
-#print('The original data frame shape:\t{}'.format(rating_df.shape))
-#print('The new data frame shape:\t{}'.format(rating_df_clean.shape))
 
-merged_df = pd.merge(recipe_df, rating_df_clean, on='recipe_id', how='inner')
-#print('The new merge frame shape:\t{}'.format(merged_df.shape))
+# valid_users_interaction_df is a subset of rating_df
+valid_users_interaction_df = pd.merge(rating_df, user_df, on='user_id', how='inner')
+merged_df = pd.merge(recipe_df, valid_users_interaction_df, on='recipe_id', how='inner')
+
 interactions_df = merged_df[['user_id', 'recipe_id', 'rating']]
-#interactions_df = interactions_df.set_index('user_id')
-#print(interactions_df.head(5))
-#print("\nUser Id [", test_user_id, "] details: \n", interactions_df.loc[interactions_df['user_id'] == test_user_id], "\n")
 
-users_interactions_count_df = interactions_df.groupby(['user_id', 'recipe_id']).size().groupby('user_id').size()
-print('# users: %d' % len(users_interactions_count_df))
-#users_with_enough_interactions_df = users_interactions_count_df[users_interactions_count_df >= 5].reset_index()[['user_id']]
-#users_with_enough_interactions_df = users_interactions_count_df[users_interactions_count_df >= MIN_USERS_INTERACTIONS].reset_index()[['user_id']]
-users_with_enough_interactions_df = users_interactions_count_df[(users_interactions_count_df >= MIN_USERS_INTERACTIONS) & (users_interactions_count_df < MAX_USERS_INTERACTIONS)].reset_index()[['user_id']]
-print('# users with at least', MIN_USERS_INTERACTIONS, 'interactions: %d' % len(users_with_enough_interactions_df))
-print('# of interactions: %d' % len(interactions_df))
-interactions_from_selected_users_df = interactions_df.merge(users_with_enough_interactions_df, how = 'right', left_on = 'user_id', right_on = 'user_id')
-print('# of interactions from users with at least', MIN_USERS_INTERACTIONS, 'interactions: %d' % len(interactions_from_selected_users_df))
+print("interactions_df Shape = ", interactions_df.shape)
+print("Unique users in interaction_df = ", len(interactions_df.user_id.unique()))
+print("Unique recipes in interaction_df = ", len(interactions_df.recipe_id.unique()))
 
-interactions_full_df = interactions_from_selected_users_df.groupby(['user_id', 'recipe_id'])['rating'].sum().reset_index()
-print('# of unique user/item interactions: %d' % len(interactions_full_df))
-interactions_train_df, interactions_test_df = train_test_split(interactions_full_df, test_size=0.20)
+interactions_train_df, interactions_test_df = train_test_split(interactions_df, test_size=0.20)
 print('# interactions on Train set: %d' % len(interactions_train_df))
 print('# interactions on Test set: %d' % len(interactions_test_df))
 
 #Indexing by user_id to speed up the searches during evaluation
-interactions_full_indexed_df = interactions_full_df.set_index('user_id')
+interactions_full_indexed_df = interactions_df.set_index('user_id')
 interactions_train_indexed_df = interactions_train_df.set_index('user_id')
 interactions_test_indexed_df = interactions_test_df.set_index('user_id')
 print("--- Total data execution time is %s min ---" %((time.time() - start_time)/60))
