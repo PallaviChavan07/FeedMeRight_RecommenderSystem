@@ -20,13 +20,14 @@ pd.value_counts(train_rating_df['rating']).plot.bar()
 ## how many ratings are there for each user
 users_interactions_count_df = train_rating_df.groupby(['user_id', 'recipe_id']).size().groupby('user_id').size()
 maxinteracted_users = users_interactions_count_df.sort_values(ascending=False).head(10010)
-print("maxinteracted_users length = ", maxinteracted_users)
+print("maxinteracted_users length = ", len(maxinteracted_users))
 #print(maxinteracted_users)
 print("max = ",max(users_interactions_count_df))
 print("min = ",min(users_interactions_count_df))
 
 # check count of number of user who have rated min 15 and max 150 recipes
-MIN_USERS_INTERACTIONS = 50
-MAX_USERS_INTERACTIONS = 1500
+MIN_USERS_INTERACTIONS = 10
+MAX_USERS_INTERACTIONS = 20
 users_with_enough_interactions_df = users_interactions_count_df[(users_interactions_count_df >= MIN_USERS_INTERACTIONS) & (users_interactions_count_df < MAX_USERS_INTERACTIONS)].reset_index()[['user_id']]
 print("users_with_enough_interactions_df = ", len(users_with_enough_interactions_df))
+print(len(users_with_enough_interactions_df.user_id.unique()))

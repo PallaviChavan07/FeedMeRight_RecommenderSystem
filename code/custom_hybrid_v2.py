@@ -9,8 +9,8 @@ from code.custom_contentbased import ContentBasedRecommender
 start_time = time.time()
 #Constants
 TEST_USER_ID = 9259
-MIN_USERS_INTERACTIONS = 50
-MAX_USERS_INTERACTIONS = 1500
+MIN_USERS_INTERACTIONS = 10
+MAX_USERS_INTERACTIONS = 20
 CB_WEIGHT = 0.3
 CF_WEIGHT = 0.7
 CB_SCORE_RATING_FACTOR = 5.0
@@ -21,16 +21,14 @@ recipe_df = pd.read_csv('../data/clean/recipes.csv')
 rating_df = pd.read_csv('../data/clean/ratings.csv')
 user_df = pd.read_csv('../data/clean/users.csv')
 
-
+user_df = user_df.head(500)
 # valid_users_interaction_df is a subset of rating_df
 valid_users_interaction_df = pd.merge(rating_df, user_df, on='user_id', how='inner')
 merged_df = pd.merge(recipe_df, valid_users_interaction_df, on='recipe_id', how='inner')
-
+# get unique recipes from merged df
+unique_valid_recipes = merged_df.recipe_id.unique()
+recipe_df = recipe_df[recipe_df['recipe_id'].isin(unique_valid_recipes)]
 interactions_df = merged_df[['user_id', 'recipe_id', 'rating']]
-
-print("interactions_df Shape = ", interactions_df.shape)
-print("Unique users in interaction_df = ", len(interactions_df.user_id.unique()))
-print("Unique recipes in interaction_df = ", len(interactions_df.recipe_id.unique()))
 
 interactions_train_df, interactions_test_df = train_test_split(interactions_df, test_size=0.20)
 print('# interactions on Train set: %d' % len(interactions_train_df))
