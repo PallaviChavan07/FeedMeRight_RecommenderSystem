@@ -11,7 +11,7 @@ from sklearn.preprocessing import MinMaxScaler
 ########################################## CONTENT BASED ##########################################
 class ContentBasedRecommender:
     MODEL_NAME = 'ContentBased'
-    def __init__(self, recipe_df=None, interactions_full_indexed_df=None):
+    def __init__(self, recipe_df=None, interactions_full_indexed_df=None, user_df=None):
         # Trains a model whose vectors size is 5000, composed by the main unigrams and bigrams found in the corpus, ignoring stopwords
         vectorizer = TfidfVectorizer(analyzer='word', ngram_range=(1, 1), min_df=0.003, max_df=0.80, stop_words=stopwords.words('english'))
         recipe_ids = recipe_df['recipe_id'].tolist()
@@ -21,6 +21,7 @@ class ContentBasedRecommender:
         self.recipe_ids = recipe_ids
         self.recipe_df = recipe_df
         self.interactions_full_indexed_df = interactions_full_indexed_df
+        self.user_df = user_df
 
         self.user_profiles = self.build_users_profiles()
         print("\nTotal User Profiles: ", len(self.user_profiles))
@@ -97,8 +98,17 @@ class ContentBasedRecommender:
         # Ignores items the user has already interacted
         similar_items_filtered = list(filter(lambda x: x[0] not in items_to_ignore, similar_items))
         recommendations_df = pd.DataFrame(similar_items_filtered, columns=['recipe_id', 'recStrength']).head(topn)
-        #recommendations_df = recommendations_df.merge(self.recipe_df, how='left', left_on='recipe_id', right_on='recipe_id')[['recStrength', 'recipe_id']]
-        recommendations_df = recommendations_df.merge(self.recipe_df, how='left', left_on='recipe_id', right_on='recipe_id')[['recStrength', 'recipe_id', 'recipe_name', 'ingredients', 'nutritions']]
 
+        #recommendations_df = recommendations_df.merge(self.recipe_df, how='left', left_on='recipe_id', right_on='recipe_id')[['recStrength', 'recipe_id']]
+        recommendations_df = recommendations_df.merge(self.recipe_df, how='left', left_on='recipe_id', right_on='recipe_id')[['recStrength', 'recipe_id', 'recipe_name', 'ingredients', 'nutritions', 'calories']]
+        print("Before calories filter = ", recommendations_df.shape)
+        # get calories required for user
+        user_calories_per_day = self.user_df.loc[self.user_df['user_id'] == user_id]['calories_per_day'].values
+        print("user calories per day", user_calories_per_day, type(user_calories_per_day), user_calories_per_day[0])
+        # divide calories into 1/3rd part
+        user_calories = user_calories_per_day[0] / 3
+        # consider only those recipes which have calories less than required calories for that user
+        recommendations_df = recommendations_df[recommendations_df['calories'] <= user_calories ]
+        print("After calories filter = ", recommendations_df.shape)
         #print(recommendations_df.shape)
         return recommendations_df

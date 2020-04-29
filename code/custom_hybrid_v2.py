@@ -21,7 +21,7 @@ recipe_df = pd.read_csv('../data/clean/recipes.csv')
 rating_df = pd.read_csv('../data/clean/ratings.csv')
 user_df = pd.read_csv('../data/clean/users.csv')
 
-user_df = user_df.head(500)
+user_df = user_df.head(100)
 # valid_users_interaction_df is a subset of rating_df
 valid_users_interaction_df = pd.merge(rating_df, user_df, on='user_id', how='inner')
 merged_df = pd.merge(recipe_df, valid_users_interaction_df, on='recipe_id', how='inner')
@@ -45,7 +45,7 @@ model_evaluator = ModelEvaluator(recipe_df, interactions_full_indexed_df, intera
 
 #Content based
 print('\nEvaluating Content-Based Filtering model...')
-content_based_recommender_model = ContentBasedRecommender(recipe_df, interactions_full_indexed_df)
+content_based_recommender_model = ContentBasedRecommender(recipe_df, interactions_full_indexed_df, user_df)
 cb_metrics, cb_detailed_results_df = model_evaluator.evaluate_model(content_based_recommender_model)
 print('Content Based Metrics:\n%s' % cb_metrics)
 print("--- Total content based execution time is %s min ---" %((time.time() - start_time)/60))
