@@ -25,30 +25,30 @@ recipe_df = pd.read_csv('../data/clean/recipes.csv')
 rating_df = pd.read_csv('../data/clean/ratings.csv')
 #recipe_df = recipe_df.head(15000)
 #rating_df = rating_df.head(15000)
-# user_df = pd.read_csv('../data/clean/users.csv')
-# user_df = user_df.head(10000)
-# # valid_users_interaction_df is a subset of rating_df
-# valid_users_interaction_df = pd.merge(rating_df, user_df, on='user_id', how='inner')
-# merged_df = pd.merge(recipe_df, valid_users_interaction_df, on='recipe_id', how='inner')
-# # get unique recipes from merged df
-# unique_valid_recipes = merged_df.recipe_id.unique()
-# recipe_df = recipe_df[recipe_df['recipe_id'].isin(unique_valid_recipes)]
-#
-# rating_df = merged_df[['user_id', 'recipe_id', 'rating']]
+user_df = pd.read_csv('../data/clean/users.csv')
+user_df = user_df.head(100)
+# valid_users_interaction_df is a subset of rating_df
+valid_users_interaction_df = pd.merge(rating_df, user_df, on='user_id', how='inner')
+merged_df = pd.merge(recipe_df, valid_users_interaction_df, on='recipe_id', how='inner')
+# get unique recipes from merged df
+unique_valid_recipes = merged_df.recipe_id.unique()
+recipe_df = recipe_df[recipe_df['recipe_id'].isin(unique_valid_recipes)]
+
+rating_df = merged_df[['user_id', 'recipe_id', 'rating']]
 #
 # print(recipe_df.columns.values)
-short_recipe_df = recipe_df[['recipe_id', 'recipe_name',  'ingredients', 'cook_method']]
+short_recipe_df = recipe_df[['recipe_id', 'recipe_name',  'ingredients', 'cook_method', 'diet_labels']]
 #print("short_recipe_df = ", short_recipe_df.head())
 #recipe_df.columns = ['recipe_id', 'recipe_name',  'ingredients', axis=1]
 merged_df = pd.merge(right=short_recipe_df, left=rating_df,how='inner', on='recipe_id')
-df_item = merged_df[['recipe_id','ingredients', 'cook_method']]
+df_item = merged_df[['recipe_id','ingredients', 'cook_method', 'diet_labels']]
 merged_df.sort_values('user_id',inplace=True)
 df_item.dropna(inplace=True)
 merged_df.dropna(inplace=True)
 
 
 #created a sparse matrix of item feature to fit in LightFM model
-item_features=encode.fit_transform(merged_df[['recipe_id','ingredients', 'cook_method']])
+item_features=encode.fit_transform(merged_df[['recipe_id','ingredients', 'cook_method', 'diet_labels']])
 #print(item_features)
 
 #Fit Lightfm hybrid model with author
@@ -56,13 +56,16 @@ from lightfm.data import Dataset
 dataset=Dataset()
 joined_features = list(df_item['ingredients'].values)
 cook_method_list = (list(df_item['cook_method'].values))
+diet_labels_list = (list(df_item['diet_labels'].values))
 for method in cook_method_list:
     joined_features.append(method)
+for diet_label in diet_labels_list:
+    joined_features.append(diet_label)
 
 dataset.fit(merged_df.user_id.values,merged_df.recipe_id.values,item_features = joined_features)
 # fit ratings, book isbn and book features to the model
 
-item_sub = merged_df[['recipe_id', 'ingredients', 'cook_method']]
+item_sub = merged_df[['recipe_id', 'ingredients', 'cook_method', 'diet_labels']]
 item_tuples = [tuple(x) for x in item_sub.values]
 
 user_sub = merged_df[['user_id', 'recipe_id']]

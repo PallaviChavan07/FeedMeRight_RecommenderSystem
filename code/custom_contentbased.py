@@ -14,10 +14,11 @@ class ContentBasedRecommender:
     MODEL_NAME = 'ContentBased'
     def __init__(self, recipe_df=None, interactions_full_indexed_df=None, user_df=None):
         # Trains a model whose vectors size is 5000, composed by the main unigrams and bigrams found in the corpus, ignoring stopwords
-        vectorizer = TfidfVectorizer(analyzer='word', ngram_range=(1, 1), min_df=0.003, max_df=0.80, stop_words=stopwords.words('english'))
+        vectorizer = TfidfVectorizer(analyzer='word', ngram_range=(1, 3), min_df=0.01, max_df=0.80, stop_words=stopwords.words('english'))
         recipe_ids = recipe_df['recipe_id'].tolist()
 
-        self.tfidf_matrix = vectorizer.fit_transform( recipe_df['cook_method'] + "" +recipe_df['ingredients'] + "" + recipe_df['diet_labels'])
+        #self.tfidf_matrix = vectorizer.fit_transform( recipe_df['cook_method'] + "" +recipe_df['clean_ingredients'] + "" + recipe_df['diet_labels'])
+        self.tfidf_matrix = vectorizer.fit_transform(recipe_df['clean_ingredients'])
         #self.tfidf_matrix = vectorizer.fit_transform(recipe_df['ingredients'])
         #self.tfidf_matrix = vectorizer.fit_transform(recipe_df['cook_method'])
 
@@ -122,7 +123,7 @@ class ContentBasedRecommender:
         recommendations_df = pd.DataFrame(similar_items_filtered, columns=['recipe_id', 'recStrength']).head(topn)
 
         #recommendations_df = recommendations_df.merge(self.recipe_df, how='left', left_on='recipe_id', right_on='recipe_id')[['recStrength', 'recipe_id']]
-        recommendations_df = recommendations_df.merge(self.recipe_df, how='left', left_on='recipe_id', right_on='recipe_id')[['recStrength', 'recipe_id', 'recipe_name', 'ingredients', 'nutritions', 'calories']]
+        recommendations_df = recommendations_df.merge(self.recipe_df, how='left', left_on='recipe_id', right_on='recipe_id')[['recStrength', 'recipe_id', 'recipe_name', 'clean_ingredients', 'calories']]
 
         recommendations_df = self.get_recommendation_for_user_calorie_count(recommendations_df, user_id)
         return recommendations_df

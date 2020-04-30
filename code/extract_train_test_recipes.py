@@ -140,6 +140,72 @@ def user_data_generation(rated_recie_df, ratings_df):
     # print("weight_kgs = ", weight_kgs)
     return user_df
 
+def get_clean_ingredients(core_recipe_df):
+    ingredients_lst = core_recipe_df['ingredients'].tolist()
+    # create a list for text data
+    # data = df.ingredients.values.tolist()
+
+    # self-define stopwords
+    recipe_stopwords = ['slice', 'large', 'diced', 'stock', 'taste', 'leave', 'powder', 'sliced', 'fresh', 'low', 'fat','whole', 'purpose', 'mix', 'ripe', 'medium', 'raw', 'coarse', 'style', 'active', 'dry','ground','white', 'heart', 'piece', 'crushed', 'cut', 'minute', 'pocket', 'shredded', 'optional', 'cube',
+                        'hour', 'bag', 'baby', 'seeded', 'small', 'clove', 'country', 'leaf', 'dressing', 'center','fillet','sea', 'chunk', 'light', 'food', 'head', 'container', 'link', 'frozen', 'can', 'cooked',
+                        'stalk','regular', 'dusting', 'heavy', 'round', 'rinsed', 'thawed', 'jar', 'solid', 'creamy', 'z',
+                        'fluid','uncooked', 'sheet', 'strip', 'short', 'soft', 'mixed', 'blue', 'flake', 'warm', 'unbleached',
+                        'sun','old', 'topping', 'wedge', 'thick', 'lean', 'extra', 'meal', 'preserve', 'mild', 'half','crosswise',
+                        'new', 'seasoning', 'kidney', 'black', 'green', 'red', 'yellow', 'white', 'unpeeled', 'boiling',
+                        'amount', 'cold', 'snow', 'cluster', 'necessary', 'firm', 'soda', 'cubed', 'temperature',
+                        'deep',
+                        'flat', 'iron', 'seedless', 'boneless', 'strong', 'bottle', 'unsweetended', 'smoked', 'melted',
+                        'thin', 'hard', 'pure', 'bulk', 'unsalted', 'deveined', 'petite', 'cooking', 'box', 'prepared',
+                        'softened', 'split', 'kosher', 'blanched_slivered', 'carton', 'canned', 'flavor', 'broken',
+                        'free',
+                        'blend', 'lengthwise', 'real', 'purple', 'dice', 'flaked', 'bite_sized',
+                        'refrigerated_crescent',
+                        'reserved', 'undrained', 'original', 'stuffing', 'bulb', 'sharp', 'reduced_fat', 'color',
+                        'pressed', 'diagonal', 'good', 'season', 'bit', 'jumbo', 'instant', 'skim', 'chopped', 'paper',
+                        'towel', 'roasted', 'flaky', 'ear', 'flavoring', 'fine', 'minced', 'square', 'size', 'single',
+                        'refrigerated', 'skinless', 'pitted', 'bay', 'seasoned', 'divided', 'long', 'crumbled',
+                        'filling',
+                        'miniature', 'mashed', 'peeled', 'top', 'bottom', 'flat_leaf', 'rubbed', 'liquid', 'ready',
+                        'chop',
+                        'non', 'frying', 'condensed', 'stewed', 'light', 'food', 'container', 'link', 'can', 'optional',
+                        'diced', 'fluid', 'meal', 'preserve', 'seasoning', 'bottle', 'box', 'split', 'flavor',
+                        'lengthwise',
+                        'flavoring', 'square', 'size', 'at_room', 'grade', 'shape', 'cuisine', 'hot', 'water', 'salt']
+
+    tokenized_ingredients_lst = []
+    for data in ingredients_lst:
+        #print("data before splitting = ", data)
+        data = data.split("^")
+        #print("data after splitting = ", data)
+        ingredstr = ""
+        for ingred in data:
+            ingredstr += " " + ingred
+        ingredstr = ingredstr.strip().lower()
+        #print("ingredstr = ", ingredstr)
+        # function to split text into word
+        tokens = nltk.word_tokenize(ingredstr)
+        # nltk.download('stopwords')
+        #print("After tokenization", tokens)
+        tokenized_ingredients_lst.append(tokens)
+        # print("tokenized_ingredients_lst = ", tokenized_ingredients_lst)
+
+        # porter = nltk.PorterStemmer()
+        # stemmed = [porter.stem(word) for word in tokens]
+        # remove self-defined stopwords
+    data_clean = [[word for word in doc if word not in recipe_stopwords] for doc in tokenized_ingredients_lst]
+    #print("data_clean[0] = ", data_clean)
+
+    clean_ingredients_list = []
+    for ingred_lst in data_clean:
+        ingredstr = ""
+        for ingred in ingred_lst:
+            ingredstr += " " + ingred
+        clean_ingredients_list.append(ingredstr.strip())
+    #print("clean_ingredients_list \n", clean_ingredients_list)
+    #core_recipe_df.drop(['ingredients'], inplace=True,axis=1)
+    core_recipe_df['clean_ingredients'] = clean_ingredients_list
+    return core_recipe_df
+
 
 def drop_recipes_with_no_calories():
     core_recipes_df = pd.read_csv('../data/original/core-data_recipe.csv')
@@ -152,6 +218,7 @@ def drop_recipes_with_no_calories():
     print("bfore removing 0 calories ", len(core_recipes_df))
     core_recipes_df = core_recipes_df[core_recipes_df['calories'] != 0]
     print("After removing 0 calories ", len(core_recipes_df))
+    #print("drop_recipes_with_no_calories returned columns ######## ", )
     return core_recipes_df
     #recipe_df.to_csv(r'../data/original/recipes_with_calories.csv', index=False, header=True)
 
@@ -195,8 +262,9 @@ def get_recipes_with_cook_methods(core_recipe_df):
             recipe_cooking_methods = recipe_cooking_methods + " " + i
         cooking_methods_list.append(recipe_cooking_methods.strip())
     cooking_methods_list = ["nothing" if x == '' else x for x in cooking_methods_list]
-    core_recipes_df['cook_method'] = cooking_methods_list
-    return core_recipes_df
+    core_recipe_df.drop(['cooking_directions'], inplace=True, axis=1)
+    core_recipe_df['cook_method'] = cooking_methods_list
+    return core_recipe_df
 
 def get_health_labels(recipes_with_cook_methods):
     nutritions_lst = recipes_with_cook_methods['nutritions'].tolist()
@@ -230,12 +298,15 @@ def get_health_labels(recipes_with_cook_methods):
     #print("diet_lables_list = ", diet_lables_list)
     #print("df size = ", len(recipes_with_cook_methods))
     #print("diet_lables_list sie = ", len(diet_lables_list))
+    recipes_with_cook_methods.drop(['nutritions'], inplace=True, axis=1)
+
     recipes_with_cook_methods['diet_labels'] = diet_lables_list
     return recipes_with_cook_methods
 
 if __name__ == '__main__':
     core_recipes_df = drop_recipes_with_no_calories()
-    recipes_with_cook_methods = get_recipes_with_cook_methods(core_recipes_df)
+    recipes_with_clean_ingredients_df = get_clean_ingredients(core_recipes_df)
+    recipes_with_cook_methods = get_recipes_with_cook_methods(recipes_with_clean_ingredients_df)
     recipes_with_health_labels = get_health_labels(recipes_with_cook_methods)
     rated_recie_df, valid_interactions_df = get_rated_recipes(recipes_with_health_labels)
     user_df = user_data_generation(rated_recie_df, valid_interactions_df)
