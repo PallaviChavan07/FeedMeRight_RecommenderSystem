@@ -198,11 +198,46 @@ def get_recipes_with_cook_methods(core_recipe_df):
     core_recipes_df['cook_method'] = cooking_methods_list
     return core_recipes_df
 
+def get_health_labels(recipes_with_cook_methods):
+    nutritions_lst = recipes_with_cook_methods['nutritions'].tolist()
+    diet_lables_list = []
+    for nut in nutritions_lst:
+        diet_labels = ""
+        nut = ast.literal_eval(nut)
+        try:
+            if int(nut['protein']['percentDailyValue']) > 20: diet_labels += ("highprotein")
+        except:
+            None
+        try:
+            if int(nut['fiber']['percentDailyValue']) > 20: diet_labels += (" highfiber")
+        except:
+            None
+        try:
+            if int(nut['fat']['percentDailyValue']) < 5: diet_labels += (" lowfat")
+        except:
+            None
+        try:
+            if int(nut['carbohydrates']['percentDailyValue']) < 5: diet_labels += (" lowcarb")
+        except:
+            None
+        try:
+            if int(nut['sodium']['percentDailyValue']) < 5: diet_labels += (" lowsodium")
+        except:
+            None
+        if diet_labels is "": diet_labels = "balanced"
+        diet_lables_list.append(diet_labels)
+
+    #print("diet_lables_list = ", diet_lables_list)
+    #print("df size = ", len(recipes_with_cook_methods))
+    #print("diet_lables_list sie = ", len(diet_lables_list))
+    recipes_with_cook_methods['diet_labels'] = diet_lables_list
+    return recipes_with_cook_methods
 
 if __name__ == '__main__':
     core_recipes_df = drop_recipes_with_no_calories()
     recipes_with_cook_methods = get_recipes_with_cook_methods(core_recipes_df)
-    rated_recie_df, valid_interactions_df = get_rated_recipes(recipes_with_cook_methods)
+    recipes_with_health_labels = get_health_labels(recipes_with_cook_methods)
+    rated_recie_df, valid_interactions_df = get_rated_recipes(recipes_with_health_labels)
     user_df = user_data_generation(rated_recie_df, valid_interactions_df)
     rated_recie_df.to_csv(r'../data/clean/recipes.csv', index=False, header=True)
     valid_interactions_df.to_csv(r'../data/clean/ratings.csv', index=False, header=True)

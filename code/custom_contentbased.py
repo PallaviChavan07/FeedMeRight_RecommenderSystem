@@ -17,7 +17,7 @@ class ContentBasedRecommender:
         vectorizer = TfidfVectorizer(analyzer='word', ngram_range=(1, 1), min_df=0.003, max_df=0.80, stop_words=stopwords.words('english'))
         recipe_ids = recipe_df['recipe_id'].tolist()
 
-        self.tfidf_matrix = vectorizer.fit_transform( recipe_df['cook_method'] + "" +recipe_df['ingredients'])
+        self.tfidf_matrix = vectorizer.fit_transform( recipe_df['cook_method'] + "" +recipe_df['ingredients'] + "" + recipe_df['diet_labels'])
         #self.tfidf_matrix = vectorizer.fit_transform(recipe_df['ingredients'])
         #self.tfidf_matrix = vectorizer.fit_transform(recipe_df['cook_method'])
 

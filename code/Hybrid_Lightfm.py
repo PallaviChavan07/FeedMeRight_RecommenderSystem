@@ -21,32 +21,48 @@ from sklearn.metrics import average_precision_score
 from sklearn.preprocessing import OneHotEncoder
 encode = OneHotEncoder(sparse=True)
 
-recipe_df = pd.read_csv('../data/original/export_rated_recipes_set.csv')
-rating_df = pd.read_csv('../data/original/core-data-train_rating.csv')
+recipe_df = pd.read_csv('../data/clean/recipes.csv')
+rating_df = pd.read_csv('../data/clean/ratings.csv')
 #recipe_df = recipe_df.head(15000)
 #rating_df = rating_df.head(15000)
-print(recipe_df.columns.values)
-short_recipe_df = recipe_df[['recipe_id', 'recipe_name',  'ingredients']]
+# user_df = pd.read_csv('../data/clean/users.csv')
+# user_df = user_df.head(10000)
+# # valid_users_interaction_df is a subset of rating_df
+# valid_users_interaction_df = pd.merge(rating_df, user_df, on='user_id', how='inner')
+# merged_df = pd.merge(recipe_df, valid_users_interaction_df, on='recipe_id', how='inner')
+# # get unique recipes from merged df
+# unique_valid_recipes = merged_df.recipe_id.unique()
+# recipe_df = recipe_df[recipe_df['recipe_id'].isin(unique_valid_recipes)]
+#
+# rating_df = merged_df[['user_id', 'recipe_id', 'rating']]
+#
+# print(recipe_df.columns.values)
+short_recipe_df = recipe_df[['recipe_id', 'recipe_name',  'ingredients', 'cook_method']]
 #print("short_recipe_df = ", short_recipe_df.head())
 #recipe_df.columns = ['recipe_id', 'recipe_name',  'ingredients', axis=1]
 merged_df = pd.merge(right=short_recipe_df, left=rating_df,how='inner', on='recipe_id')
-df_item = merged_df[['recipe_id','ingredients']]
+df_item = merged_df[['recipe_id','ingredients', 'cook_method']]
 merged_df.sort_values('user_id',inplace=True)
 df_item.dropna(inplace=True)
 merged_df.dropna(inplace=True)
 
 
 #created a sparse matrix of item feature to fit in LightFM model
-item_features=encode.fit_transform(merged_df[['recipe_id','ingredients']])
+item_features=encode.fit_transform(merged_df[['recipe_id','ingredients', 'cook_method']])
 #print(item_features)
 
 #Fit Lightfm hybrid model with author
 from lightfm.data import Dataset
 dataset=Dataset()
-dataset.fit(merged_df.user_id.values,merged_df.recipe_id.values,item_features = df_item['ingredients'].values)
+joined_features = list(df_item['ingredients'].values)
+cook_method_list = (list(df_item['cook_method'].values))
+for method in cook_method_list:
+    joined_features.append(method)
+
+dataset.fit(merged_df.user_id.values,merged_df.recipe_id.values,item_features = joined_features)
 # fit ratings, book isbn and book features to the model
 
-item_sub = merged_df[['recipe_id', 'ingredients']]
+item_sub = merged_df[['recipe_id', 'ingredients', 'cook_method']]
 item_tuples = [tuple(x) for x in item_sub.values]
 
 user_sub = merged_df[['user_id', 'recipe_id']]
@@ -71,7 +87,8 @@ model = model.fit(train,
                 num_threads=4)
 
 
-from lightfm.evaluation import auc_score
+from lightfm.evaluation import auc_score, precision_at_k, recall_at_k
+
 # Don't forget the pass in the item features again!
 train_auc = auc_score(model,
                       train,
@@ -83,4 +100,24 @@ test_auc = auc_score(model,
                     train_interactions=train,
                     item_features=item_features).mean()
 print('Hybrid test set AUC: %s' % test_auc)
+#
+train_precision = precision_at_k(model,
+                      train,
+                      item_features=item_features).mean()
+print('Hybrid training set Precision: %s' % train_precision)
+test_precision = precision_at_k(model,
+                    test,
+                    train_interactions=train,
+                    item_features=item_features).mean()
+print('Hybrid test set Precision: %s' % test_precision)
+
+train_recall = recall_at_k(model,
+                      train,
+                      item_features=item_features).mean()
+print('Hybrid training set recall: %s' % train_recall)
+test_recall = recall_at_k(model,
+                    test,
+                    train_interactions=train,
+                    item_features=item_features).mean()
+print('Hybrid test set recall: %s' % test_recall)
 #
