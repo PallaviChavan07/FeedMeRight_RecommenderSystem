@@ -3,12 +3,11 @@ import pandas as pd
 from scipy.sparse import csr_matrix
 from scipy.sparse.linalg import svds
 
-# The number of factors to factor the user-item matrix.
-NUMBER_OF_FACTORS_MF = 15
-
 ########################################## COLLABORATIVE FILTERING BASED ##########################################
 class CFRecommender:
     MODEL_NAME = 'Collaborative SVD Matrix'
+    # The number of factors to factor the user-item matrix.
+    NUMBER_OF_FACTORS_MF = 50
     def __init__(self, recipe_df=None, interactions_train_df=None, interactions_full_indexed_df=None, interactions_train_indexed_df=None, interactions_test_indexed_df=None, user_df=None):
         # Creating a sparse pivot table with users in rows and items in columns
         users_items_pivot_matrix_df = interactions_train_df.pivot(index='user_id', columns='recipe_id', values='rating').fillna(0)
@@ -20,8 +19,9 @@ class CFRecommender:
         #print(users_ids[:10])
         users_items_pivot_sparse_matrix = csr_matrix(users_items_pivot_matrix)
         # Performs matrix factorization of the original user item matrix
-        # U, sigma, Vt = svds(users_items_pivot_matrix, k = NUMBER_OF_FACTORS_MF)
-        U, sigma, Vt = svds(users_items_pivot_sparse_matrix, k=NUMBER_OF_FACTORS_MF)
+        if min(users_items_pivot_sparse_matrix.shape) < self.NUMBER_OF_FACTORS_MF: self.NUMBER_OF_FACTORS_MF = 1
+        print("NUMBER_OF_FACTORS_MF=", self.NUMBER_OF_FACTORS_MF)
+        U, sigma, Vt = svds(users_items_pivot_sparse_matrix, k=self.NUMBER_OF_FACTORS_MF)
         # print(U.shape)
         # print(Vt.shape)
         sigma = np.diag(sigma)

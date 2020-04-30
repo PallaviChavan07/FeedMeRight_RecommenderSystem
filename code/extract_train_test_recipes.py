@@ -176,7 +176,7 @@ def get_recipes_with_cook_methods(core_recipe_df):
     for data in directions_lst:
         # function to split text into word
         tokens = nltk.word_tokenize(data)
-        nltk.download('stopwords')
+        #nltk.download('stopwords')
         # print("After tokenization", tokens)
         # remove all tokens that are not alphabetic
         words = [word for word in tokens if word.isalpha()]

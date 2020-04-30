@@ -110,6 +110,7 @@ class ModelEvaluator:
         recall = {} #create dictionaries
         precision = {}
         accuracy = {}
+        f1score = {}
         n_rel = {}
         for k in ks:
             # get top k recos for the user from the complete users_cb_recs_df
@@ -128,8 +129,7 @@ class ModelEvaluator:
             relevant_and_reco_items_df = user_top_k_recos.merge(user_interated_relevant_df, how='inner', on='recipe_id')
             # print("relevant_and_reco_items_df:\n", relevant_and_reco_items_df)
 
-            irrelevant_and_reco_items_df = user_top_k_recos.merge(user_interated_irrelevant_df, how='inner',
-                                                                  on='recipe_id')
+            irrelevant_and_reco_items_df = user_top_k_recos.merge(user_interated_irrelevant_df, how='inner',on='recipe_id')
             # user_top_k_recos_count = len(user_top_k_recos)
             # p_recall = len(relevant_and_reco_items_df) / user_top_k_recos_count if user_top_k_recos_count != 0 else 1
             # print("Pallavi dumb recall", p_recall)
@@ -148,10 +148,12 @@ class ModelEvaluator:
 
             accuracy[k] = (n_rel_and_rec_k + n_irrel_and_rec_k) / k
 
+            f1score[k] = 2 * ((precision[k] * recall[k]) / (precision[k] + recall[k])) if (precision[k] + recall[k] > 0.0) else 0
 
-        person_metrics = {'recall@5': recall[5], 'precision@5': precision[5], 'accuracy@5': accuracy[5],
-                          'recall@10': recall[10], 'precision@10': precision[10], 'accuracy@10': accuracy[10],
-                          'recall@20': recall[20], 'precision@20': precision[20], 'accuracy@20': accuracy[20]}
+
+        person_metrics = {'recall@5': recall[5], 'precision@5': precision[5], 'accuracy@5': accuracy[5], 'f1score@5': f1score[5],
+                          'recall@10': recall[10], 'precision@10': precision[10], 'accuracy@10': accuracy[10], 'f1score@10': f1score[10],
+                          'recall@20': recall[20], 'precision@20': precision[20], 'accuracy@20': accuracy[20], 'f1score@20': f1score[20]}
 
         # print(person_metrics)
         return person_metrics
@@ -170,18 +172,21 @@ class ModelEvaluator:
         global_recall_5 = detailed_results_df['recall@5'].sum() / len(detailed_results_df['recall@5'])
         global_precision_5 = detailed_results_df['precision@5'].sum() / len(detailed_results_df['precision@5'])
         global_accuracy_5 = detailed_results_df['accuracy@5'].sum() / len(detailed_results_df['accuracy@5'])
+        global_f1score_5 = detailed_results_df['f1score@5'].sum() / len(detailed_results_df['f1score@5'])
 
         global_recall_10 = detailed_results_df['recall@10'].sum() / len(detailed_results_df['recall@10'])
         global_precision_10 = detailed_results_df['precision@10'].sum() / len(detailed_results_df['precision@10'])
         global_accuracy_10 = detailed_results_df['accuracy@10'].sum() / len(detailed_results_df['accuracy@10'])
+        global_f1score_10 = detailed_results_df['f1score@10'].sum() / len(detailed_results_df['f1score@10'])
 
         global_recall_20 = detailed_results_df['recall@20'].sum() / len(detailed_results_df['recall@20'])
         global_precision_20 = detailed_results_df['precision@20'].sum() / len(detailed_results_df['precision@20'])
         global_accuracy_20 = detailed_results_df['accuracy@20'].sum() / len(detailed_results_df['accuracy@20'])
+        global_f1score_10 = detailed_results_df['f1score@10'].sum() / len(detailed_results_df['f1score@10'])
 
-        global_metrics = {'model': model.get_model_name(), 'recall@5': global_recall_5, 'precision@5': global_precision_5, 'accuracy@5': global_accuracy_5,
-                          'recall@10': global_recall_10, 'precision@10': global_precision_10, 'accuracy@10': global_accuracy_10,
-                          'recall@20': global_recall_20, 'precision@20': global_precision_20, 'accuracy@20': global_accuracy_20}
+        global_metrics = {'model': model.get_model_name(), 'recall@5': global_recall_5, 'precision@5': global_precision_5, 'accuracy@5': global_accuracy_5, 'f1score@5': global_f1score_5,
+                          'recall@10': global_recall_10, 'precision@10': global_precision_10, 'accuracy@10': global_accuracy_10, 'f1score@10': global_f1score_10,
+                          'recall@20': global_recall_20, 'precision@20': global_precision_20, 'accuracy@20': global_accuracy_20, 'f1score@20': global_f1score_10}
 
         # else:
         #     people_metrics = []

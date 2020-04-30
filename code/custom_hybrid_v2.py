@@ -117,8 +117,9 @@ print('Hybrid Metrics:\n%s' % hybrid_metrics)
 #plot graph
 global_metrics_df = pd.DataFrame([cb_metrics, cf_metrics, hybrid_metrics]).set_index('model')
 #print(global_metrics_df)
-ax = global_metrics_df.transpose().plot(kind='bar', color=['red', 'green', 'blue'])
+ax = global_metrics_df.transpose().plot(kind='bar', color=['red', 'green', 'blue'], figsize=(15,8))
 for p in ax.patches:
-    ax.annotate("%.3f" % p.get_height(), (p.get_x() + p.get_width() / 2., p.get_height()), ha='center', va='center', xytext=(0, 5), textcoords='offset points')
+    #ax.annotate("%.3f" % p.get_height(), (p.get_x() + p.get_width() / 2., p.get_height()), ha='center', va='center', xytext=(0, 5), textcoords='offset points')
+    ax.annotate("%.2f" % p.get_height(), (p.get_x(), p.get_height()), ha='center', va='center', xytext=(0, 5), textcoords='offset points')
 plt.show()
 print("--- Total Hybrid based model execution time is %s min ---" %((time.time() - start_time)/60))
