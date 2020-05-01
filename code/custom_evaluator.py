@@ -116,13 +116,16 @@ class ModelEvaluator:
             # get top k recos for the user from the complete users_cb_recs_df
             user_top_k_recos = users_recs_df.head(k)
 
+            # get only items with recStrength > 0.5 i.e threshold
+            user_top_k_recos = user_top_k_recos.loc[user_top_k_recos['recStrength'] >= 0.5]
+
             # get recipes already interacted by user
             user_interact_recipes_df = self.get_recipes_interacted(user_id)
             # print("user_interact_recipes_df: ", len(user_interact_recipes_df), " for user_id ", user_id)
 
             # filter out recipes with rating > 3.5 which is our threshold for good vs bad recipes
-            user_interated_relevant_df = user_interact_recipes_df.loc[user_interact_recipes_df['rating'] >= 3.0]
-            user_interated_irrelevant_df = user_interact_recipes_df.loc[user_interact_recipes_df['rating'] < 3.0]
+            user_interated_relevant_df = user_interact_recipes_df.loc[user_interact_recipes_df['rating'] >= 3]
+            user_interated_irrelevant_df = user_interact_recipes_df.loc[user_interact_recipes_df['rating'] < 3]
             # print("user_interated_relevant_df: ", len(user_interated_relevant_df))
 
             # merge top k recommended recipes with filtered user interacted recipes to get relevant recommended
@@ -142,7 +145,7 @@ class ModelEvaluator:
             # print("amod yet to correct but dumb recall", a_recall)
 
             # Number of recommended items in top k (Whose score is higher than 0.5 (relevant))
-            n_rec_k = len(user_top_k_recos.loc[user_top_k_recos['recStrength'] >= 0.3])
+            n_rec_k = len(user_top_k_recos.loc[user_top_k_recos['recStrength'] >= 0.5])
             # Precision@K: Proportion of recommended items that are relevant
             precision[k] = n_rel_and_rec_k / n_rec_k if n_rec_k != 0 else 0
 
@@ -182,11 +185,11 @@ class ModelEvaluator:
         global_recall_20 = detailed_results_df['recall@20'].sum() / len(detailed_results_df['recall@20'])
         global_precision_20 = detailed_results_df['precision@20'].sum() / len(detailed_results_df['precision@20'])
         global_accuracy_20 = detailed_results_df['accuracy@20'].sum() / len(detailed_results_df['accuracy@20'])
-        global_f1score_10 = detailed_results_df['f1score@10'].sum() / len(detailed_results_df['f1score@10'])
+        global_f1score_20 = detailed_results_df['f1score@20'].sum() / len(detailed_results_df['f1score@20'])
 
         global_metrics = {'model': model.get_model_name(), 'recall@5': global_recall_5, 'precision@5': global_precision_5, 'accuracy@5': global_accuracy_5, 'f1score@5': global_f1score_5,
                           'recall@10': global_recall_10, 'precision@10': global_precision_10, 'accuracy@10': global_accuracy_10, 'f1score@10': global_f1score_10,
-                          'recall@20': global_recall_20, 'precision@20': global_precision_20, 'accuracy@20': global_accuracy_20, 'f1score@20': global_f1score_10}
+                          'recall@20': global_recall_20, 'precision@20': global_precision_20, 'accuracy@20': global_accuracy_20, 'f1score@20': global_f1score_20}
 
         # else:
         #     people_metrics = []

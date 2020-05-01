@@ -13,7 +13,6 @@ MIN_USERS_INTERACTIONS = 10
 MAX_USERS_INTERACTIONS = 20
 CB_WEIGHT = 0.3
 CF_WEIGHT = 0.7
-CB_SCORE_RATING_FACTOR = 5.0
 pd.set_option("display.max_rows", None, "display.max_columns", None)
 
 #data
@@ -101,7 +100,7 @@ class HybridRecommender:
         #print(recs_df.head(5))
 
         # Computing a hybrid recommendation score based on CF and CB scores
-        recs_df['recStrength'] = (recs_df['recStrengthCB'] * CB_SCORE_RATING_FACTOR * CB_WEIGHT) + (recs_df['recStrengthCF'] * CF_WEIGHT)
+        recs_df['recStrength'] = (recs_df['recStrengthCB'] * CB_WEIGHT) + (recs_df['recStrengthCF'] * CF_WEIGHT)
 
         # Sorting recommendations by hybrid score
         recommendations_df = recs_df.sort_values('recStrength', ascending=False).head(topn)
