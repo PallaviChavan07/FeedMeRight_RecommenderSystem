@@ -4,11 +4,19 @@ from code.custom_popularity import PopularityRecommender
 from code.custom_svd import CFRecommender
 from code.custom_contentbased import ContentBasedRecommender
 import pandas as pd
+pd.set_option("display.max_rows", None, "display.max_columns", None)
+import sys
 import time
 start_time = time.time()
-#Constants
-REC_FOR_USER_ID = 925
-pd.set_option("display.max_rows", None, "display.max_columns", None)
+
+isNewUser = False
+newuser_cal_count = 1000
+REC_FOR_USER_ID = 0
+if len(sys.argv) > 1:
+    newuser_cal_count = sys.argv[0]
+    isNewUser = sys.argv[1]
+else:
+    REC_FOR_USER_ID = sys.argv[0]
 
 #data
 recipe_df = pd.read_csv('../data/clean/recipes.csv')
@@ -37,10 +45,11 @@ interactions_test_indexed_df = interactions_test_df.set_index('user_id')
 print("--- Total data execution time is %s min ---" %((time.time() - start_time)/60))
 
 #if the recipes list is empty the user has not rated anything and safe to treat as new user. In this case, only run popularity model.
-if len(recipes_to_ignore_list) == 0:
+if len(recipes_to_ignore_list) < 1 or isNewUser:
     popularity_model = PopularityRecommender(interactions_df, recipe_df)
-    pop_final_top10_recommendation_df = popularity_model.recommend_items(topn=10, pd=pd)
-    print('\nRecommendations based on popularity model for user', REC_FOR_USER_ID, 'are:\n%s' % pop_final_top10_recommendation_df)
+    pop_final_top10_recommendation_df = popularity_model.recommend_items(topn=10, pd=pd, newuser_cal_count=newuser_cal_count)
+    if not isNewUser: print("\n Entered user Id does not exists in the system. Showing Recommendations based on popularity model.\n", pop_final_top10_recommendation_df)
+    else: print('\nRecommendations based on popularity model are:\n', pop_final_top10_recommendation_df)
     print("--- Total Popularity based recommendation engine execution time is %s min ---" % ((time.time() - start_time) / 60))
 else:
     print('\nContent-Based Recommendation using CB model...')
