@@ -18,16 +18,10 @@ class ContentBasedRecommender:
         vectorizer = TfidfVectorizer(analyzer='word', ngram_range=(1, 3), min_df=0.01, max_df=0.80, stop_words=stopwords.words('english'))
         recipe_ids = recipe_df['recipe_id'].tolist()
 
-        #self.tfidf_matrix = vectorizer.fit_transform( recipe_df['cook_method'] + "" +recipe_df['clean_ingredients'] + "" + recipe_df['diet_labels'])
-        self.tfidf_matrix = vectorizer.fit_transform(recipe_df['clean_ingredients'])
+        self.tfidf_matrix = vectorizer.fit_transform( recipe_df['cook_method'] + "" +recipe_df['ingredients'] + "" + recipe_df['diet_labels'])
+        #self.tfidf_matrix = vectorizer.fit_transform(recipe_df['clean_ingredients'])
         #self.tfidf_matrix = vectorizer.fit_transform(recipe_df['ingredients'])
-        #self.tfidf_matrix = vectorizer.fit_transform(recipe_df['cook_method'])
 
-        # # This is your original matrix
-        # ingredients_matrix = vectorizer.fit_transform(recipe_df['ingredients'])
-        # # This is the other features
-        # cook_method_matrix = vectorizer.fit_transform(recipe_df['cook_method'])
-        # self.tfidf_matrix = sparse.hstack((ingredients_matrix, cook_method_matrix))
         self.tfidf_feature_names = vectorizer.get_feature_names()
         self.recipe_ids = recipe_ids
         self.recipe_df = recipe_df
