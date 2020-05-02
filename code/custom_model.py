@@ -6,6 +6,7 @@ from code.custom_evaluator import ModelEvaluator
 from code.custom_svd import CFRecommender
 from code.custom_contentbased import ContentBasedRecommender
 from code.custom_hybrid import HybridRecommender
+from datetime import datetime
 
 start_time = time.time()
 #Constants
@@ -69,5 +70,8 @@ ax = global_metrics_df.transpose().plot(kind='bar', color=['red', 'green', 'blue
 for p in ax.patches:
     #ax.annotate("%.3f" % p.get_height(), (p.get_x() + p.get_width() / 2., p.get_height()), ha='center', va='center', xytext=(0, 5), textcoords='offset points')
     ax.annotate("%.2f" % p.get_height(), (p.get_x(), p.get_height()), ha='center', va='center', xytext=(0, 5), textcoords='offset points')
-plt.show()
+#plt.show()
+plotfile = datetime.now().strftime('plot_%b-%d-%Y_%H%M.pdf')
+plt.savefig('../plots/%s' %plotfile)
+
 print("--- Total Hybrid based model execution time is %s min ---" %((time.time() - start_time)/60))

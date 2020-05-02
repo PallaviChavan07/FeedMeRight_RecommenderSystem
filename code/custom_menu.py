@@ -1,5 +1,4 @@
 import sys
-import msvcrt
 import traceback
 
 def input_menu():
@@ -66,12 +65,17 @@ def input_menu():
         exit(0)
 
 if __name__ == '__main__':
+    # try:
+    #     input_menu()
+    # except:
+    #     print(sys.exc_info()[0])
+    #     print(traceback.format_exc())
+    # finally:
+    #     input_menu()
+
     while True:
         try:
-            if msvcrt.kbhit() and msvcrt.getch()==chr(27).encode():
-                print("\nEsc key pressed, exiting program...")
-                sys.exit(0)
-            else: input_menu()
+            input_menu()
         except:
             #print(sys.exc_info()[0])
             #print(traceback.format_exc())
