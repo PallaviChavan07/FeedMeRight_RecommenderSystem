@@ -1,8 +1,3 @@
-from sklearn.model_selection import train_test_split
-from code.custom_hybrid import HybridRecommender
-from code.custom_popularity import PopularityRecommender
-from code.custom_svd import CFRecommender
-from code.custom_contentbased import ContentBasedRecommender
 import pandas as pd
 pd.set_option("display.max_rows", None, "display.max_columns", None)
 import sys
@@ -20,30 +15,10 @@ else:
     REC_FOR_USER_ID = sys.argv[0]
 
 #data
-recipe_df = pd.read_csv('../data/clean/recipes.csv')
 rating_df = pd.read_csv('../data/clean/ratings.csv')
-user_df = pd.read_csv('../data/clean/users.csv')
-
 #for user id get already rated recipe ids in a list
 recipes_to_ignore_list = rating_df.loc[rating_df['user_id'] == REC_FOR_USER_ID]['recipe_id'].values.tolist()
 #print("recipes_to_ignore_list: ", recipes_to_ignore_list)
-
-#valid_users_interaction_df is a subset of rating_df
-valid_users_interaction_df = pd.merge(rating_df, user_df, on='user_id', how='inner')
-merged_df = pd.merge(recipe_df, valid_users_interaction_df, on='recipe_id', how='inner')
-#get unique recipes from merged df
-unique_valid_recipes = merged_df.recipe_id.unique()
-recipe_df = recipe_df[recipe_df['recipe_id'].isin(unique_valid_recipes)]
-interactions_df = merged_df[['user_id', 'recipe_id', 'rating']]
-
-#split data into train and test
-interactions_train_df, interactions_test_df = train_test_split(interactions_df, test_size=0.20)
-
-#Indexing by user_id to speed up the searches during evaluation
-interactions_full_indexed_df = interactions_df.set_index('user_id')
-interactions_train_indexed_df = interactions_train_df.set_index('user_id')
-interactions_test_indexed_df = interactions_test_df.set_index('user_id')
-print("--- Total data execution time is %s min ---" %((time.time() - start_time)/60))
 
 def load_reco_model(filename):
     pathtoload = '../models/' + filename + '.mdl'
