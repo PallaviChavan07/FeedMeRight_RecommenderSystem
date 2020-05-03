@@ -106,6 +106,6 @@ if isEval:
         ax.annotate("%.2f" % p.get_height(), (p.get_x(), p.get_height()), ha='center', va='center', xytext=(0, 5),
                     textcoords='offset points')
     # plt.show()
-    plotfile = datetime.now().strftime('plot_%b-%d-%Y_%H%M.pdf')
+    plotfile = datetime.now().strftime('plot_%b-%d-%Y_%H%M.png')
     plt.savefig(os.path.realpath('../plots/%s' % plotfile))
 sys.argv.clear()
