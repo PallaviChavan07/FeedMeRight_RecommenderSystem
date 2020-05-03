@@ -52,13 +52,13 @@ if len(recipes_to_ignore_list) < 1 or isNewUser:
     else: print('\nRecommendations based on popularity model are:\n', pop_final_top10_recommendation_df)
     print("--- Total Popularity based recommendation engine execution time is %s min ---" % ((time.time() - start_time) / 60))
 else:
-    print('\nContent-Based Recommendation using CB model...')
+    print('\nRecommendation using Content-Based model...')
     content_based_recommender_model = ContentBasedRecommender(recipe_df, interactions_full_indexed_df, user_df)
     cb_final_top10_recommendation_df = content_based_recommender_model.recommend_items(REC_FOR_USER_ID, recipes_to_ignore_list, 10)
     print(cb_final_top10_recommendation_df)
     print("--- Total content based recommendation engine execution time is %s min ---" % ((time.time() - start_time) / 60))
 
-    print('\nCollaborative Filtering Recommendation using SVD Matrix Factorization...')
+    print('\nRecommendation using collaborative filtering [SVD Matrix Factorization]...')
     cf_recommender_model = CFRecommender(recipe_df, interactions_train_df, interactions_full_indexed_df, interactions_train_indexed_df, interactions_test_indexed_df, user_df)
     cf_final_top10_recommendation_df = cf_recommender_model.recommend_items(REC_FOR_USER_ID, recipes_to_ignore_list, 10)
     print(cf_final_top10_recommendation_df)

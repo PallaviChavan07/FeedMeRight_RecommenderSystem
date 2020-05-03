@@ -9,10 +9,6 @@ from code.custom_hybrid import HybridRecommender
 from datetime import datetime
 
 start_time = time.time()
-#Constants
-TEST_USER_ID = 9259
-MIN_USERS_INTERACTIONS = 10
-MAX_USERS_INTERACTIONS = 20
 pd.set_option("display.max_rows", None, "display.max_columns", None)
 
 #data

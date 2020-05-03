@@ -10,7 +10,8 @@ class CFRecommender:
     NUMBER_OF_FACTORS_MF = 50
     def __init__(self, recipe_df=None, interactions_train_df=None, interactions_full_indexed_df=None, interactions_train_indexed_df=None, interactions_test_indexed_df=None, user_df=None):
         # Creating a sparse pivot table with users in rows and items in columns
-        users_items_pivot_matrix_df = interactions_train_df.pivot(index='user_id', columns='recipe_id', values='rating').fillna(0)
+        interactions_train_indexed_df = interactions_train_indexed_df.reset_index()
+        users_items_pivot_matrix_df = interactions_train_indexed_df.pivot(index='user_id', columns='recipe_id', values='rating').fillna(0)
         users_items_pivot_matrix_df.head(10)
 
         users_items_pivot_matrix = users_items_pivot_matrix_df
@@ -20,7 +21,7 @@ class CFRecommender:
         users_items_pivot_sparse_matrix = csr_matrix(users_items_pivot_matrix)
         # Performs matrix factorization of the original user item matrix
         if min(users_items_pivot_sparse_matrix.shape) < self.NUMBER_OF_FACTORS_MF: self.NUMBER_OF_FACTORS_MF = 1
-        print("NUMBER_OF_FACTORS_MF=", self.NUMBER_OF_FACTORS_MF)
+        #print("NUMBER_OF_FACTORS_MF=", self.NUMBER_OF_FACTORS_MF)
         U, sigma, Vt = svds(users_items_pivot_sparse_matrix, k=self.NUMBER_OF_FACTORS_MF)
         # print(U.shape)
         # print(Vt.shape)
@@ -58,7 +59,7 @@ class CFRecommender:
         # print("CF: After calories filter = ", recommendations_df.shape)
         return cal_rec_df
 
-    def recommend_items(self, user_id, items_to_ignore=[], topn=10, verbose=False):
+    def recommend_items(self, user_id, items_to_ignore=[], topn=10):
         # Get and sort the user's predictions
         try:
             sorted_user_predictions = self.cf_predictions_df[user_id].sort_values(ascending=False).reset_index().rename(columns={user_id: 'recStrength'})
@@ -67,6 +68,6 @@ class CFRecommender:
 
         # Recommend the highest predicted rating movies that the user hasn't seen yet.
         recommendations_df = sorted_user_predictions[~sorted_user_predictions['recipe_id'].isin(items_to_ignore)].sort_values('recStrength', ascending=False).head(topn)
-        recommendations_df = recommendations_df.merge(self.recipe_df, how='left', left_on='recipe_id', right_on='recipe_id')[['recStrength', 'recipe_id', 'recipe_name', 'ingredients', 'calories']]
+        recommendations_df = recommendations_df.merge(self.recipe_df, how='left', left_on='recipe_id', right_on='recipe_id')[['recStrength', 'recipe_id', 'recipe_name', 'ingredients', 'calories', 'diet_labels']]
         recommendations_df = self.get_recommendation_for_user_calorie_count(recommendations_df, user_id)
         return recommendations_df

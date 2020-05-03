@@ -25,16 +25,16 @@ class HybridRecommender:
         # print("Hybrid: After calories filter = ", recommendations_df.shape)
         return cal_rec_df
 
-    def recommend_items(self, user_id, items_to_ignore=[], topn=10, verbose=False):
+    def recommend_items(self, user_id, items_to_ignore=[], topn=10):
         # Getting the top-1000 Content-based filtering recommendations
         try:
-            cb_recs_df = self.cb_rec_model.recommend_items(user_id, items_to_ignore=items_to_ignore, verbose=verbose, topn=1000).rename(columns={'recStrength': 'recStrengthCB'})
+            cb_recs_df = self.cb_rec_model.recommend_items(user_id, items_to_ignore=items_to_ignore, topn=1000).rename(columns={'recStrength': 'recStrengthCB'})
         except:
             return None
 
         # Getting the top-1000 Collaborative filtering recommendations
         try:
-            cf_recs_df = self.cf_rec_model.recommend_items(user_id, items_to_ignore=items_to_ignore, verbose=verbose, topn=1000).rename(columns={'recStrength': 'recStrengthCF'})
+            cf_recs_df = self.cf_rec_model.recommend_items(user_id, items_to_ignore=items_to_ignore, topn=1000).rename(columns={'recStrength': 'recStrengthCF'})
         except:
             return None
 
@@ -47,6 +47,6 @@ class HybridRecommender:
 
         # Sorting recommendations by hybrid score
         recommendations_df = recs_df.sort_values('recStrength', ascending=False).head(topn)
-        recommendations_df = recommendations_df.merge(self.recipe_df, how='left', left_on='recipe_id', right_on='recipe_id')[['recStrength', 'recipe_id', 'recipe_name', 'ingredients', 'calories']]
+        recommendations_df = recommendations_df.merge(self.recipe_df, how='left', left_on='recipe_id', right_on='recipe_id')[['recStrength', 'recipe_id', 'recipe_name', 'ingredients', 'calories', 'diet_labels']]
         recommendations_df = self.get_recommendation_for_user_calorie_count(recommendations_df, user_id)
         return recommendations_df
