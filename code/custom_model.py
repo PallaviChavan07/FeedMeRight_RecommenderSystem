@@ -1,11 +1,13 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import time
+import joblib
 from sklearn.model_selection import train_test_split
 from code.custom_evaluator import ModelEvaluator
 from code.custom_svd import CFRecommender
 from code.custom_contentbased import ContentBasedRecommender
 from code.custom_hybrid import HybridRecommender
+from code.custom_popularity import PopularityRecommender
 from datetime import datetime
 
 start_time = time.time()
@@ -26,38 +28,59 @@ recipe_df = recipe_df[recipe_df['recipe_id'].isin(unique_valid_recipes)]
 interactions_df = merged_df[['user_id', 'recipe_id', 'rating']]
 
 interactions_train_df, interactions_test_df = train_test_split(interactions_df, test_size=0.20)
-print('# interactions on Train set: %d' % len(interactions_train_df))
-print('# interactions on Test set: %d' % len(interactions_test_df))
+#print('# interactions on Train set: %d' % len(interactions_train_df))
+#print('# interactions on Test set: %d' % len(interactions_test_df))
 
 #Indexing by user_id to speed up the searches during evaluation
 interactions_full_indexed_df = interactions_df.set_index('user_id')
 interactions_train_indexed_df = interactions_train_df.set_index('user_id')
 interactions_test_indexed_df = interactions_test_df.set_index('user_id')
-print("--- Total data execution time is %s min ---" %((time.time() - start_time)/60))
+#print("--- Total data execution time is %s min ---" %((time.time() - start_time)/60))
 
 #create instance for model evaluator to be used in respective recommenders
 model_evaluator = ModelEvaluator(recipe_df, interactions_full_indexed_df, interactions_train_indexed_df, interactions_test_indexed_df)
 
+def save_reco_model(filename, model):
+    pathtosave = '../models/' + filename + '.mdl'
+    joblib.dump(model, pathtosave)
+
 #Content based
-print('\nEvaluating Content-Based Filtering model...')
+print('\nCreating Content-Based Filtering model...')
 content_based_recommender_model = ContentBasedRecommender(recipe_df, interactions_full_indexed_df, user_df)
+save_reco_model('contentbasedmodel', content_based_recommender_model)
+print('Saved contentbasedmodel...')
+print('Evaluating...')
 cb_metrics, cb_detailed_results_df = model_evaluator.evaluate_model(content_based_recommender_model)
 print('Content Based Metrics:\n%s' % cb_metrics)
 print("--- Total content based execution time is %s min ---" %((time.time() - start_time)/60))
 
 #collaborative based
-print('\nEvaluating Collaborative Filtering (SVD Matrix Factorization) model...')
+print('\nCreating Collaborative Filtering (SVD Matrix Factorization) model...')
 cf_recommender_model = CFRecommender(recipe_df, interactions_train_df, interactions_full_indexed_df, interactions_train_indexed_df, interactions_test_indexed_df, user_df)
+save_reco_model('collaborativemodel', cf_recommender_model)
+print('Saved collaborativemodel...')
+print('Evaluating...')
 cf_metrics, cf_detailed_results_df = model_evaluator.evaluate_model(cf_recommender_model)
 print('Collaborative SVD Matric Factorization Metrics:\n%s' % cf_metrics)
 #print("CF Log: Cols in cf_detailed_results_df", list(cf_detailed_results_df.columns.values))
 #print(cf_detailed_results_df.head(5))
 print("--- Total Collaborative SVD based execution time is %s min ---" %((time.time() - start_time)/60))
 
-print('\nEvaluating Hybrid model...')
+print('\nCreating Hybrid model...')
 hybrid_recommender_model = HybridRecommender(content_based_recommender_model, cf_recommender_model, recipe_df, user_df)
+save_reco_model('hybridmodel', hybrid_recommender_model)
+print('Saved hybridmodel...')
+print('Evaluating...')
 hybrid_metrics, hybrid_detailed_results_df = model_evaluator.evaluate_model(hybrid_recommender_model)
 print('Hybrid Metrics:\n%s' % hybrid_metrics)
+print("--- Total Hybrid based model execution time is %s min ---" %((time.time() - start_time)/60))
+
+#create and save popularity model as well
+print('\nCreating Popularity model...')
+popularity_model = PopularityRecommender(interactions_df, recipe_df)
+save_reco_model('popularitymodel', popularity_model)
+print('Saved popularitymodel...')
+print("--- Total popularity based model execution time is %s min ---" %((time.time() - start_time)/60))
 
 #plot graph
 global_metrics_df = pd.DataFrame([cb_metrics, cf_metrics, hybrid_metrics]).set_index('model')
@@ -69,5 +92,3 @@ for p in ax.patches:
 #plt.show()
 plotfile = datetime.now().strftime('plot_%b-%d-%Y_%H%M.pdf')
 plt.savefig('../plots/%s' %plotfile)
-
-print("--- Total Hybrid based model execution time is %s min ---" %((time.time() - start_time)/60))

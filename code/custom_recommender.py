@@ -6,6 +6,7 @@ from code.custom_contentbased import ContentBasedRecommender
 import pandas as pd
 pd.set_option("display.max_rows", None, "display.max_columns", None)
 import sys
+import joblib
 import time
 start_time = time.time()
 
@@ -44,28 +45,32 @@ interactions_train_indexed_df = interactions_train_df.set_index('user_id')
 interactions_test_indexed_df = interactions_test_df.set_index('user_id')
 print("--- Total data execution time is %s min ---" %((time.time() - start_time)/60))
 
+def load_reco_model(filename):
+    pathtoload = '../models/' + filename + '.mdl'
+    return joblib.load(pathtoload)
+
 #if the recipes list is empty the user has not rated anything and safe to treat as new user. In this case, only run popularity model.
 if len(recipes_to_ignore_list) < 1 or isNewUser:
-    popularity_model = PopularityRecommender(interactions_df, recipe_df)
+    popularity_model = load_reco_model('popularitymodel')
     pop_final_top10_recommendation_df = popularity_model.recommend_items(topn=10, pd=pd, newuser_cal_count=newuser_cal_count)
-    if not isNewUser: print("\n Entered user Id does not exists in the system. Showing Recommendations based on popularity model.\n", pop_final_top10_recommendation_df)
-    else: print('\nRecommendations based on popularity model are:\n', pop_final_top10_recommendation_df)
+    if not isNewUser: print("\n Entered user Id does not exists in the system.\nShowing Recommendations based on popularity model.\n", pop_final_top10_recommendation_df)
+    else: print('\nHello new user, recommendations based on popularity model are:\n', pop_final_top10_recommendation_df)
     print("--- Total Popularity based recommendation engine execution time is %s min ---" % ((time.time() - start_time) / 60))
 else:
     print('\nRecommendation using Content-Based model...')
-    content_based_recommender_model = ContentBasedRecommender(recipe_df, interactions_full_indexed_df, user_df)
+    content_based_recommender_model = load_reco_model('contentbasedmodel')
     cb_final_top10_recommendation_df = content_based_recommender_model.recommend_items(REC_FOR_USER_ID, recipes_to_ignore_list, 10)
     print(cb_final_top10_recommendation_df)
     print("--- Total content based recommendation engine execution time is %s min ---" % ((time.time() - start_time) / 60))
 
     print('\nRecommendation using collaborative filtering [SVD Matrix Factorization]...')
-    cf_recommender_model = CFRecommender(recipe_df, interactions_train_df, interactions_full_indexed_df, interactions_train_indexed_df, interactions_test_indexed_df, user_df)
+    cf_recommender_model = load_reco_model('collaborativemodel')
     cf_final_top10_recommendation_df = cf_recommender_model.recommend_items(REC_FOR_USER_ID, recipes_to_ignore_list, 10)
     print(cf_final_top10_recommendation_df)
     print("--- Total SVD based recommendation engine execution time is %s min ---" % ((time.time() - start_time) / 60))
 
     print('\nRecommendation using Hybrid model...')
-    hybrid_recommender_model = HybridRecommender(content_based_recommender_model, cf_recommender_model, recipe_df, user_df)
+    hybrid_recommender_model = load_reco_model('hybridmodel')
     hybrid_final_top10_recommendation_df = hybrid_recommender_model.recommend_items(REC_FOR_USER_ID, recipes_to_ignore_list, 10)
     print(hybrid_final_top10_recommendation_df)
     print("--- Total Hybrid based recommendation engine execution time is %s min ---" % ((time.time() - start_time) / 60))

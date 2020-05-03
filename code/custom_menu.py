@@ -1,8 +1,9 @@
 import sys
 import traceback
+import joblib
 
 def input_menu():
-    sys.argv = []
+    #sys.argv = []
     print("\nEnter the option number and hit enter to execute different recipe recommendation modules.")
     cmdinput = input("1. Run Recommendation Models. \n"
                      "2. Run Get Recipe Recommendation for Existing User.\n"
