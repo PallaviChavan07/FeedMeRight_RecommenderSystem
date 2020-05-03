@@ -2,6 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import time
 import joblib
+import sys
 from sklearn.model_selection import train_test_split
 from code.custom_evaluator import ModelEvaluator
 from code.custom_svd import CFRecommender
@@ -12,6 +13,11 @@ from datetime import datetime
 
 start_time = time.time()
 pd.set_option("display.max_rows", None, "display.max_columns", None)
+
+isEval = False
+print(len(sys.argv))
+if len(sys.argv) > 1: isEval = sys.argv[1]
+print(isEval)
 
 #data
 recipe_df = pd.read_csv('../data/clean/recipes.csv')
@@ -44,51 +50,63 @@ def save_reco_model(filename, model):
     pathtosave = '../models/' + filename + '.mdl'
     joblib.dump(model, pathtosave)
 
+def load_reco_model(filename):
+    pathtoload = '../models/' + filename + '.mdl'
+    return joblib.load(pathtoload)
+
 #Content based
-print('\nCreating Content-Based Filtering model...')
-content_based_recommender_model = ContentBasedRecommender(recipe_df, interactions_full_indexed_df, user_df)
-save_reco_model('contentbasedmodel', content_based_recommender_model)
-print('Saved contentbasedmodel...')
-print('Evaluating...')
-cb_metrics, cb_detailed_results_df = model_evaluator.evaluate_model(content_based_recommender_model)
-print('Content Based Metrics:\n%s' % cb_metrics)
+if isEval:
+    print('\nEvaluating Content-Based...')
+    cb_metrics, cb_detailed_results_df = model_evaluator.evaluate_model(load_reco_model('contentbasedmodel'))
+    print('Content Based Metrics:\n%s' % cb_metrics)
+else:
+    print('\nCreating Content-Based Filtering model...')
+    content_based_recommender_model = ContentBasedRecommender(recipe_df, interactions_full_indexed_df, user_df)
+    save_reco_model('contentbasedmodel', content_based_recommender_model)
+    print('Saved contentbasedmodel...')
 print("--- Total content based execution time is %s min ---" %((time.time() - start_time)/60))
 
 #collaborative based
-print('\nCreating Collaborative Filtering (SVD Matrix Factorization) model...')
-cf_recommender_model = CFRecommender(recipe_df, interactions_train_df, interactions_full_indexed_df, interactions_train_indexed_df, interactions_test_indexed_df, user_df)
-save_reco_model('collaborativemodel', cf_recommender_model)
-print('Saved collaborativemodel...')
-print('Evaluating...')
-cf_metrics, cf_detailed_results_df = model_evaluator.evaluate_model(cf_recommender_model)
-print('Collaborative SVD Matric Factorization Metrics:\n%s' % cf_metrics)
-#print("CF Log: Cols in cf_detailed_results_df", list(cf_detailed_results_df.columns.values))
-#print(cf_detailed_results_df.head(5))
+if isEval:
+    print('\nEvaluating Collaborative...')
+    cf_metrics, cf_detailed_results_df = model_evaluator.evaluate_model(load_reco_model('collaborativemodel'))
+    print('Collaborative SVD Matric Factorization Metrics:\n%s' % cf_metrics)
+else:
+    print('\nCreating Collaborative Filtering (SVD Matrix Factorization) model...')
+    cf_recommender_model = CFRecommender(recipe_df, interactions_train_df, interactions_full_indexed_df, interactions_train_indexed_df, interactions_test_indexed_df, user_df)
+    save_reco_model('collaborativemodel', cf_recommender_model)
+    print('Saved collaborativemodel...')
 print("--- Total Collaborative SVD based execution time is %s min ---" %((time.time() - start_time)/60))
 
-print('\nCreating Hybrid model...')
-hybrid_recommender_model = HybridRecommender(content_based_recommender_model, cf_recommender_model, recipe_df, user_df)
-save_reco_model('hybridmodel', hybrid_recommender_model)
-print('Saved hybridmodel...')
-print('Evaluating...')
-hybrid_metrics, hybrid_detailed_results_df = model_evaluator.evaluate_model(hybrid_recommender_model)
-print('Hybrid Metrics:\n%s' % hybrid_metrics)
+if isEval:
+    print('\nEvaluating Hybrid...')
+    hybrid_metrics, hybrid_detailed_results_df = model_evaluator.evaluate_model(load_reco_model('hybridmodel'))
+    print('Hybrid Metrics:\n%s' % hybrid_metrics)
+else:
+    print('\nCreating Hybrid model...')
+    hybrid_recommender_model = HybridRecommender(content_based_recommender_model, cf_recommender_model, recipe_df, user_df)
+    save_reco_model('hybridmodel', hybrid_recommender_model)
+    print('Saved hybridmodel...')
 print("--- Total Hybrid based model execution time is %s min ---" %((time.time() - start_time)/60))
 
 #create and save popularity model as well
-print('\nCreating Popularity model...')
-popularity_model = PopularityRecommender(interactions_df, recipe_df)
-save_reco_model('popularitymodel', popularity_model)
-print('Saved popularitymodel...')
-print("--- Total popularity based model execution time is %s min ---" %((time.time() - start_time)/60))
+if not isEval:
+    print('\nCreating Popularity model...')
+    popularity_model = PopularityRecommender(interactions_df, recipe_df)
+    save_reco_model('popularitymodel', popularity_model)
+    print('Saved popularitymodel...')
+    print("--- Total popularity based model execution time is %s min ---" %((time.time() - start_time)/60))
 
-#plot graph
-global_metrics_df = pd.DataFrame([cb_metrics, cf_metrics, hybrid_metrics]).set_index('model')
-#print(global_metrics_df)
-ax = global_metrics_df.transpose().plot(kind='bar', color=['red', 'green', 'blue'], figsize=(15,8))
-for p in ax.patches:
-    #ax.annotate("%.3f" % p.get_height(), (p.get_x() + p.get_width() / 2., p.get_height()), ha='center', va='center', xytext=(0, 5), textcoords='offset points')
-    ax.annotate("%.2f" % p.get_height(), (p.get_x(), p.get_height()), ha='center', va='center', xytext=(0, 5), textcoords='offset points')
-#plt.show()
-plotfile = datetime.now().strftime('plot_%b-%d-%Y_%H%M.pdf')
-plt.savefig('../plots/%s' %plotfile)
+if isEval:
+    # plot graph
+    global_metrics_df = pd.DataFrame([cb_metrics, cf_metrics, hybrid_metrics]).set_index('model')
+    # print(global_metrics_df)
+    ax = global_metrics_df.transpose().plot(kind='bar', color=['red', 'green', 'blue'], figsize=(15, 8))
+    for p in ax.patches:
+        # ax.annotate("%.3f" % p.get_height(), (p.get_x() + p.get_width() / 2., p.get_height()), ha='center', va='center', xytext=(0, 5), textcoords='offset points')
+        ax.annotate("%.2f" % p.get_height(), (p.get_x(), p.get_height()), ha='center', va='center', xytext=(0, 5),
+                    textcoords='offset points')
+    # plt.show()
+    plotfile = datetime.now().strftime('plot_%b-%d-%Y_%H%M.pdf')
+    plt.savefig('../plots/%s' % plotfile)
+sys.argv.clear()

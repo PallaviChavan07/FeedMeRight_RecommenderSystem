@@ -6,12 +6,14 @@ from csv import writer
 def input_menu():
     #sys.argv = []
     print("\nEnter the option number and hit enter to execute different recipe recommendation modules.")
-    cmdinput = input("1. Run Recommendation Models. \n"
+    cmdinput = input("1. Create Recommendation Models. \n"
                      "2. Run Get Recipe Recommendation for Existing User.\n"
                      "3. New User.\n"
-                     "4. Exit.\n")
+                     "4. Evaluate models.\n"
+                     "5. Exit.\n")
 
-    if cmdinput == '1':
+    if cmdinput == '1' or cmdinput == '4':
+        if cmdinput == '4': sys.argv = ['eval', True]
         exec(open("custom_model.py").read())
 
     elif cmdinput == '2':
@@ -81,12 +83,13 @@ def input_menu():
         print("New user information and ratings updated...")
         print("The new user id is: ", new_user_id)
 
-    elif cmdinput == '4':
-        exit(0)
+    elif cmdinput == '5':
+        print("Exiting program...\n ")
+        sys.exit(0)
 
     else:
         print("Entered wrong option, exiting program...\n ")
-        exit(0)
+        sys.exit(0)
 
 if __name__ == '__main__':
     # try:
@@ -101,6 +104,6 @@ if __name__ == '__main__':
         try:
             input_menu()
         except:
-            #print(sys.exc_info()[0])
-            #print(traceback.format_exc())
+            print(sys.exc_info()[0])
+            print(traceback.format_exc())
             break

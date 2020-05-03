@@ -49,3 +49,4 @@ else:
     hybrid_final_top10_recommendation_df = hybrid_recommender_model.recommend_items(REC_FOR_USER_ID, recipes_to_ignore_list, 10)
     print(hybrid_final_top10_recommendation_df)
     print("--- Total Hybrid based recommendation engine execution time is %s min ---" % ((time.time() - start_time) / 60))
+sys.argv.clear()
