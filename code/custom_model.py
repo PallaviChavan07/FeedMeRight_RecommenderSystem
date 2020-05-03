@@ -3,26 +3,25 @@ import matplotlib.pyplot as plt
 import time
 import joblib
 import sys
+import os
 from sklearn.model_selection import train_test_split
-from code.custom_evaluator import ModelEvaluator
-from code.custom_svd import CFRecommender
-from code.custom_contentbased import ContentBasedRecommender
-from code.custom_hybrid import HybridRecommender
-from code.custom_popularity import PopularityRecommender
+from custom_evaluator import ModelEvaluator
+from custom_svd import CFRecommender
+from custom_contentbased import ContentBasedRecommender
+from custom_hybrid import HybridRecommender
+from custom_popularity import PopularityRecommender
 from datetime import datetime
 
 start_time = time.time()
 pd.set_option("display.max_rows", None, "display.max_columns", None)
 
 isEval = False
-print(len(sys.argv))
 if len(sys.argv) > 1: isEval = sys.argv[1]
-print(isEval)
 
 #data
-recipe_df = pd.read_csv('../data/clean/recipes.csv')
-rating_df = pd.read_csv('../data/clean/ratings.csv')
-user_df = pd.read_csv('../data/clean/users.csv')
+recipe_df = pd.read_csv(os.path.realpath('../data/clean/recipes.csv'))
+rating_df = pd.read_csv(os.path.realpath('../data/clean/ratings.csv'))
+user_df = pd.read_csv(os.path.realpath('../data/clean/users.csv'))
 
 #user_df = user_df.head(100)
 # valid_users_interaction_df is a subset of rating_df
@@ -48,11 +47,11 @@ model_evaluator = ModelEvaluator(recipe_df, interactions_full_indexed_df, intera
 
 def save_reco_model(filename, model):
     pathtosave = '../models/' + filename + '.mdl'
-    joblib.dump(model, pathtosave)
+    joblib.dump(model, os.path.realpath(pathtosave))
 
 def load_reco_model(filename):
     pathtoload = '../models/' + filename + '.mdl'
-    return joblib.load(pathtoload)
+    return joblib.load(os.path.realpath(pathtoload))
 
 #Content based
 if isEval:
@@ -108,5 +107,5 @@ if isEval:
                     textcoords='offset points')
     # plt.show()
     plotfile = datetime.now().strftime('plot_%b-%d-%Y_%H%M.pdf')
-    plt.savefig('../plots/%s' % plotfile)
+    plt.savefig(os.path.realpath('../plots/%s' % plotfile))
 sys.argv.clear()

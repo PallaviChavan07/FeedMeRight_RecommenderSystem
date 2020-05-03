@@ -7,17 +7,19 @@ import pandas as pd
 import json
 import ast
 import numpy as np
+import os
 from random import seed
 from random import randint
 nltk.download(['stopwords','wordnet'])
+nltk.download('punkt')
 from nltk.stem.porter import PorterStemmer
 from nltk.corpus import stopwords
 
 pd.set_option("display.max_rows", None, "display.max_columns", None)
-train_ratings_df = pd.read_csv('../data/original/core-data-train_rating.csv')
-test_ratings_df = pd.read_csv('../data/original/core-data-test_rating.csv')
+train_ratings_df = pd.read_csv(os.path.realpath('../data/original/core-data-train_rating.csv'))
+test_ratings_df = pd.read_csv(os.path.realpath('../data/original/core-data-test_rating.csv'))
 train_test_ratings_df = pd.concat([train_ratings_df, test_ratings_df], ignore_index=True)
-core_recipes_df = pd.read_csv('../data/original/core-data_recipe.csv')
+core_recipes_df = pd.read_csv(os.path.realpath('../data/original/core-data_recipe.csv'))
 
 def get_rated_recipes(core_recipes_df):
     # Get all recipe ids from all interactions
@@ -92,7 +94,7 @@ def user_data_generation(rated_recie_df, ratings_df):
     user_df['user_id'] = list(filtered_ratings_df.user_id.unique())[:10000]
     print("user_df = ", user_df.shape)
     print(user_df.head())
-    weight_height_df = pd.read_csv('../data/original/weight-height.csv')
+    weight_height_df = pd.read_csv(os.path.realpath('../data/original/weight-height.csv'))
     print(user_df.shape[0])
     print(weight_height_df.shape[0])
     user_df['Gender'] = weight_height_df['Gender'].to_list()
@@ -208,7 +210,7 @@ def get_clean_ingredients(core_recipe_df):
 
 
 def drop_recipes_with_no_calories():
-    core_recipes_df = pd.read_csv('../data/original/core-data_recipe.csv')
+    core_recipes_df = pd.read_csv(os.path.realpath('../data/original/core-data_recipe.csv'))
     nutritions_lst = core_recipes_df['nutritions'].tolist()
     calories_list = []
     for nut in nutritions_lst:
@@ -310,7 +312,7 @@ if __name__ == '__main__':
     recipes_with_health_labels = get_health_labels(recipes_with_cook_methods)
     rated_recie_df, valid_interactions_df = get_rated_recipes(recipes_with_health_labels)
     user_df = user_data_generation(rated_recie_df, valid_interactions_df)
-    rated_recie_df.to_csv(r'../data/clean/recipes.csv', index=False, header=True)
-    valid_interactions_df.to_csv(r'../data/clean/ratings.csv', index=False, header=True)
-    user_df.to_csv(r'../data/clean/users.csv', index=False, header=True)
+    rated_recie_df.to_csv(os.path.realpath(r'../data/clean/recipes.csv'), index=False, header=True)
+    valid_interactions_df.to_csv(os.path.realpath(r'../data/clean/ratings.csv'), index=False, header=True)
+    user_df.to_csv(os.path.realpath(r'../data/clean/users.csv'), index=False, header=True)
 

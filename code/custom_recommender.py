@@ -3,6 +3,7 @@ pd.set_option("display.max_rows", None, "display.max_columns", None)
 import sys
 import joblib
 import time
+import os
 start_time = time.time()
 
 isNewUser = False
@@ -15,14 +16,14 @@ else:
     REC_FOR_USER_ID = sys.argv[0]
 
 #data
-rating_df = pd.read_csv('../data/clean/ratings.csv')
+rating_df = pd.read_csv(os.path.realpath('../data/clean/ratings.csv'))
 #for user id get already rated recipe ids in a list
 recipes_to_ignore_list = rating_df.loc[rating_df['user_id'] == REC_FOR_USER_ID]['recipe_id'].values.tolist()
 #print("recipes_to_ignore_list: ", recipes_to_ignore_list)
 
 def load_reco_model(filename):
     pathtoload = '../models/' + filename + '.mdl'
-    return joblib.load(pathtoload)
+    return joblib.load(os.path.realpath(pathtoload))
 
 #if the recipes list is empty the user has not rated anything and safe to treat as new user. In this case, only run popularity model.
 if len(recipes_to_ignore_list) < 1 or isNewUser:

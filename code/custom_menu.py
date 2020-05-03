@@ -1,6 +1,7 @@
 import sys
 import traceback
 import joblib
+import os
 from csv import writer
 
 def input_menu():
@@ -64,19 +65,19 @@ def input_menu():
         recipe_name_to_be_rated = str(input("\nPlease enter Recipe Name that you like: "))
         rating_value = int(input("Please enter rating (1-5): "))
         import pandas as pd
-        users_df = pd.read_csv('../data/clean/users.csv')
-        recipe_df = pd.read_csv('../data/clean/recipes.csv')
+        users_df = pd.read_csv(os.path.realpath('../data/clean/users.csv'))
+        recipe_df = pd.read_csv(os.path.realpath('../data/clean/recipes.csv'))
         #get recipe id from name
         selected_recipe_id = recipe_df.loc[recipe_df['recipe_name'].str.lower() == recipe_name_to_be_rated.lower()]['recipe_id'].values
         #get max user id and add one to generate new (non colliding) user id
         new_user_id = max(users_df['user_id']) + 1
         #write user information to file
-        with open('../data/clean/users.csv', 'a+', newline='') as fobj:
+        with open(os.path.realpath('../data/clean/users.csv'), 'a+', newline='') as fobj:
             csv_writer = writer(fobj)
             csv_writer.writerow([new_user_id, userGender, userHt, userWt, userHt * 0.0254, userWt * 0.453592, 0.0, userAge, userAT, bmr, cal_per_day])
         fobj.close()
         # write ratings information to file
-        with open('../data/clean/ratings.csv', 'a+', newline='') as fobj:
+        with open(os.path.realpath('../data/clean/ratings.csv'), 'a+', newline='') as fobj:
             csv_writer = writer(fobj)
             csv_writer.writerow([new_user_id, selected_recipe_id[0], rating_value])
         fobj.close()
@@ -104,6 +105,6 @@ if __name__ == '__main__':
         try:
             input_menu()
         except:
-            print(sys.exc_info()[0])
-            print(traceback.format_exc())
+            #print(sys.exc_info()[0])
+            #print(traceback.format_exc())
             break
