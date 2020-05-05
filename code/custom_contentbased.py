@@ -121,7 +121,7 @@ class ContentBasedRecommender:
         similar_items_filtered = list(filter(lambda x: x[0] not in items_to_ignore, similar_items))
         recommendations_df = pd.DataFrame(similar_items_filtered, columns=['recipe_id', 'recStrength']).head(topn)
 
-        recommendations_df = recommendations_df.merge(self.recipe_df, how='left', left_on='recipe_id', right_on='recipe_id')[['recStrength', 'recipe_id', 'recipe_name', 'ingredients', 'calories', 'diet_labels']]
+        recommendations_df = recommendations_df.merge(self.recipe_df, how='left', left_on='recipe_id', right_on='recipe_id')[['recStrength', 'recipe_id', 'recipe_name', 'calories', 'diet_labels']]
         # convert similarity score to close to equivalent rating
         recommendations_df['recStrength'] = (recommendations_df['recStrength'] * self.CB_SCORE_RATING_FACTOR) + 1.0
 

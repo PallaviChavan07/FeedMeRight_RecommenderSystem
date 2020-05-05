@@ -103,8 +103,13 @@ class ModelEvaluator:
         global_accuracy_20 = detailed_results_df['accuracy@20'].sum() / len(detailed_results_df['accuracy@20'])
         global_f1score_20 = detailed_results_df['f1score@20'].sum() / len(detailed_results_df['f1score@20'])
 
-        global_metrics = {'model': model.get_model_name(), 'recall@5': global_recall_5, 'precision@5': global_precision_5, 'accuracy@5': global_accuracy_5, 'f1score@5': global_f1score_5,
-                          'recall@10': global_recall_10, 'precision@10': global_precision_10, 'accuracy@10': global_accuracy_10, 'f1score@10': global_f1score_10,
-                          'recall@20': global_recall_20, 'precision@20': global_precision_20, 'accuracy@20': global_accuracy_20, 'f1score@20': global_f1score_20}
+        # global_metrics = {'model': model.get_model_name(), 'recall@5': global_recall_5, 'precision@5': global_precision_5, 'accuracy@5': global_accuracy_5, 'f1score@5': global_f1score_5,
+        #                   'recall@10': global_recall_10, 'precision@10': global_precision_10, 'accuracy@10': global_accuracy_10, 'f1score@10': global_f1score_10,
+        #                   'recall@20': global_recall_20, 'precision@20': global_precision_20, 'accuracy@20': global_accuracy_20, 'f1score@20': global_f1score_20}
+
+        global_metrics = {'model': model.get_model_name(),
+                          'accuracy@5': global_accuracy_5, 'f1score@5': global_f1score_5,
+                          'accuracy@10': global_accuracy_10, 'f1score@10': global_f1score_10,
+                          'accuracy@20': global_accuracy_20, 'f1score@20': global_f1score_20}
 
         return global_metrics, detailed_results_df
