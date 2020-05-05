@@ -4,8 +4,11 @@ class PopularityRecommender:
 
     def __init__(self, interactions_full_df, recipe_df=None):
         # Computes the most popular items by grouping recipe_ids with maximum number of ratings and not just maximum ratings
-        interactions_full_df = interactions_full_df.loc[interactions_full_df['rating'] > 3]
-        self.popularity_df = interactions_full_df.groupby('recipe_id')['rating'].sum().sort_values(ascending=False).reset_index()
+        # get a df with recipe id and its avg rating
+        avg_ratings_per_recipe = interactions_full_df.groupby('recipe_id')['rating'].mean().sort_values(ascending=False).reset_index()
+        interactions_full_df = avg_ratings_per_recipe.loc[interactions_full_df['rating'] > 3]
+        #self.popularity_df = interactions_full_df.groupby('recipe_id')['rating'].sum().sort_values(ascending=False).reset_index()
+        self.popularity_df = interactions_full_df
         self.recipe_df = recipe_df
         #print(self.popularity_df.head(5))
 

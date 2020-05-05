@@ -46,7 +46,11 @@ class ContentBasedRecommender:
         return item_profile
 
     def get_item_profiles(self, ids):
-        item_profiles_list = [self.get_item_profile(x) for x in ids]
+        try:
+            item_profiles_list = [self.get_item_profile(x) for x in ids]
+        except:
+            #if ids is just a single item (new user issue)
+            item_profiles_list = [self.get_item_profile(ids)]
         item_profiles = scipy.sparse.vstack(item_profiles_list)
         return item_profiles
 
@@ -58,8 +62,8 @@ class ContentBasedRecommender:
             user_interactions_items = None
 
         # some users might not have any recipe_id so check for the type
-        if type(user_interactions_items) == pd.Series:
-            user_item_profiles = self.get_item_profiles(interactions_person_df['recipe_id'])
+        if not user_interactions_items is None:
+            user_item_profiles = self.get_item_profiles(user_interactions_items)
             user_item_strengths = np.array(interactions_person_df['rating']).reshape(-1, 1)
             # Weighted average of item profiles by the interactions strength
             user_item_strengths_weighted_avg = np.sum(user_item_profiles.multiply(user_item_strengths),
