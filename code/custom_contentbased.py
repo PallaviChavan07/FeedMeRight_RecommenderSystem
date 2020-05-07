@@ -13,7 +13,7 @@ from sklearn.preprocessing import MinMaxScaler
 class ContentBasedRecommender:
     MODEL_NAME = 'CB'
     CB_SCORE_RATING_FACTOR = 4.0
-    def __init__(self, recipe_df=None, interactions_full_indexed_df=None, user_df=None):
+    def __init__(self, recipe_df=None, interactions_train_indexed_df=None, user_df=None):
         # Trains a model whose vectors size is 5000, composed by the main unigrams and bigrams found in the corpus, ignoring stopwords
         vectorizer = TfidfVectorizer(analyzer='word', ngram_range=(1, 3), min_df=0.01, max_df=0.80, stop_words=stopwords.words('english'))
         recipe_ids = recipe_df['recipe_id'].tolist()
@@ -25,7 +25,7 @@ class ContentBasedRecommender:
         self.tfidf_feature_names = vectorizer.get_feature_names()
         self.recipe_ids = recipe_ids
         self.recipe_df = recipe_df
-        self.interactions_full_indexed_df = interactions_full_indexed_df
+        self.interactions_train_indexed_df = interactions_train_indexed_df
         self.user_df = user_df
 
         self.user_profiles = self.build_users_profiles()
@@ -75,8 +75,8 @@ class ContentBasedRecommender:
         return user_profile_norm
 
     def build_users_profiles(self):
-        interactions_indexed_df = self.interactions_full_indexed_df[
-            self.interactions_full_indexed_df['recipe_id'].isin(self.recipe_df['recipe_id'])]
+        interactions_indexed_df = self.interactions_train_indexed_df[
+            self.interactions_train_indexed_df['recipe_id'].isin(self.recipe_df['recipe_id'])]
         user_profiles = {}
         for user_id in interactions_indexed_df.index.unique():
             user_profiles[user_id] = self.build_users_profile(user_id, interactions_indexed_df)

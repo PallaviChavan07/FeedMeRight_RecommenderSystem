@@ -24,7 +24,7 @@ recipe_df = pd.read_csv(os.path.realpath('../data/clean/recipes.csv'))
 rating_df = pd.read_csv(os.path.realpath('../data/clean/ratings.csv'))
 user_df = pd.read_csv(os.path.realpath('../data/clean/users.csv'))
 
-#user_df = user_df.head(100)
+user_df = user_df.head(100)
 # valid_users_interaction_df is a subset of rating_df
 valid_users_interaction_df = pd.merge(rating_df, user_df, on='user_id', how='inner')
 merged_df = pd.merge(recipe_df, valid_users_interaction_df, on='recipe_id', how='inner')
@@ -34,8 +34,8 @@ unique_valid_recipes = merged_df.recipe_id.unique()
 interactions_df = merged_df[['user_id', 'recipe_id', 'rating']]
 
 interactions_train_df, interactions_test_df = train_test_split(interactions_df, test_size=0.20)
-#print('# interactions on Train set: %d' % len(interactions_train_df))
-#print('# interactions on Test set: %d' % len(interactions_test_df))
+print('# interactions on Train set: %d' % len(interactions_train_df))
+print('# interactions on Test set: %d' % len(interactions_test_df))
 
 #Indexing by user_id to speed up the searches during evaluation
 interactions_full_indexed_df = interactions_df.set_index('user_id')
@@ -57,11 +57,11 @@ def load_reco_model(filename):
 #Content based
 if isEval:
     print('\nEvaluating Content-Based...')
-    cb_metrics, cb_detailed_results_df = model_evaluator.evaluate_model(load_reco_model('contentbasedmodel'))
+    cb_metrics = model_evaluator.evaluate_model(load_reco_model('contentbasedmodel'))
     print('Content Based Metrics:\n%s' % cb_metrics)
 else:
     print('\nCreating Content-Based Filtering model...')
-    content_based_recommender_model = ContentBasedRecommender(recipe_df, interactions_full_indexed_df, user_df)
+    content_based_recommender_model = ContentBasedRecommender(recipe_df, interactions_train_indexed_df, user_df)
     save_reco_model('contentbasedmodel', content_based_recommender_model)
     print('Saved contentbasedmodel...')
 print("--- Total content based execution time is %s min ---" %((time.time() - start_time)/60))
@@ -69,11 +69,11 @@ print("--- Total content based execution time is %s min ---" %((time.time() - st
 #Content based
 if isEval:
     print('\nEvaluating Content-Based ALL...')
-    cball_metrics, cball_detailed_results_df = model_evaluator.evaluate_model(load_reco_model('contentbasedmodelall'))
+    cball_metrics = model_evaluator.evaluate_model(load_reco_model('contentbasedmodelall'))
     print('Content Based ALL Metrics:\n%s' % cball_metrics)
 else:
     print('\nCreating Content-Based all Filtering model...')
-    content_based_all_recommender_model = ContentBasedRecommenderAll(recipe_df, interactions_full_indexed_df, user_df)
+    content_based_all_recommender_model = ContentBasedRecommenderAll(recipe_df, interactions_train_indexed_df, user_df)
     save_reco_model('contentbasedmodelall', content_based_all_recommender_model)
     print('Saved contentbasedmodelall...')
 print("--- Total content based all execution time is %s min ---" %((time.time() - start_time)/60))
@@ -81,7 +81,7 @@ print("--- Total content based all execution time is %s min ---" %((time.time() 
 #collaborative based
 if isEval:
     print('\nEvaluating Collaborative...')
-    cf_metrics, cf_detailed_results_df = model_evaluator.evaluate_model(load_reco_model('collaborativemodel'))
+    cf_metrics = model_evaluator.evaluate_model(load_reco_model('collaborativemodel'))
     print('Collaborative SVD Matric Factorization Metrics:\n%s' % cf_metrics)
 else:
     print('\nCreating Collaborative Filtering (SVD Matrix Factorization) model...')
@@ -92,7 +92,7 @@ print("--- Total Collaborative SVD based execution time is %s min ---" %((time.t
 
 if isEval:
     print('\nEvaluating Hybrid...')
-    hybrid_metrics, hybrid_detailed_results_df = model_evaluator.evaluate_model(load_reco_model('hybridmodel'))
+    hybrid_metrics = model_evaluator.evaluate_model(load_reco_model('hybridmodel'))
     print('Hybrid Metrics:\n%s' % hybrid_metrics)
 else:
     print('\nCreating Hybrid model...')

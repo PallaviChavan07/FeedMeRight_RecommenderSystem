@@ -13,7 +13,7 @@ from sklearn.preprocessing import MinMaxScaler
 class ContentBasedRecommenderAll:
     MODEL_NAME = 'CBAll'
     CB_SCORE_RATING_FACTOR = 4.0
-    def __init__(self, recipe_df=None, interactions_full_indexed_df=None, user_df=None):
+    def __init__(self, recipe_df=None, interactions_train_indexed_df=None, user_df=None):
         recipe_ids = recipe_df['recipe_id'].tolist()
 
         # Trains a model whose vectors size is 5000, composed by the main unigrams and bigrams found in the corpus, ignoring stopwords
@@ -28,7 +28,7 @@ class ContentBasedRecommenderAll:
 
         self.recipe_ids = recipe_ids
         self.recipe_df = recipe_df
-        self.interactions_full_indexed_df = interactions_full_indexed_df
+        self.interactions_train_indexed_df = interactions_train_indexed_df
         self.user_df = user_df
 
         self.user_profiles = self.build_users_profiles()
@@ -55,7 +55,11 @@ class ContentBasedRecommenderAll:
                 item_profiles_list_dl.append(item_profiles_dl)
         except:
             #if ids is just a single item (new user issue)
-            item_profiles_list_in, item_profiles_list_ck, item_profiles_list_dl = [self.get_item_profile(ids)]
+            item_profiles_in, item_profiles_ck, item_profiles_dl = self.get_item_profile(ids)
+            item_profiles_list_in.append(item_profiles_in)
+            item_profiles_list_ck.append(item_profiles_ck)
+            item_profiles_list_dl.append(item_profiles_dl)
+
         item_profiles_in = scipy.sparse.vstack(item_profiles_list_in)
         item_profiles_ck = scipy.sparse.vstack(item_profiles_list_ck)
         item_profiles_dl = scipy.sparse.vstack(item_profiles_list_dl)
@@ -86,7 +90,7 @@ class ContentBasedRecommenderAll:
         return user_profile_norm_in, user_profile_norm_ck, user_profile_norm_dl
 
     def build_users_profiles(self):
-        interactions_indexed_df = self.interactions_full_indexed_df[self.interactions_full_indexed_df['recipe_id'].isin(self.recipe_df['recipe_id'])]
+        interactions_indexed_df = self.interactions_train_indexed_df[self.interactions_train_indexed_df['recipe_id'].isin(self.recipe_df['recipe_id'])]
         user_profiles = {}
         for user_id in interactions_indexed_df.index.unique():
             user_profiles_in, user_profiles_ck, user_profiles_dl = self.build_users_profile(user_id, interactions_indexed_df)

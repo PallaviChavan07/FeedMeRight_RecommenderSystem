@@ -105,6 +105,6 @@ if __name__ == '__main__':
         try:
             input_menu()
         except:
-            #print(sys.exc_info()[0])
-            #print(traceback.format_exc())
+            print(sys.exc_info()[0])
+            print(traceback.format_exc())
             break

@@ -112,4 +112,4 @@ class ModelEvaluator:
         #                   'accuracy@10': global_accuracy_10, 'f1score@10': global_f1score_10,
         #                   'accuracy@20': global_accuracy_20, 'f1score@20': global_f1score_20}
 
-        return global_metrics, detailed_results_df
+        return global_metrics
