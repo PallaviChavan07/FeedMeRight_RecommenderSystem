@@ -8,7 +8,7 @@ class CFRecommender:
     MODEL_NAME = 'Collaborative SVD Matrix'
     # The number of factors to factor the user-item matrix.
     NUMBER_OF_FACTORS_MF = 50
-    def __init__(self, recipe_df=None, interactions_train_df=None, interactions_full_indexed_df=None, interactions_train_indexed_df=None, interactions_test_indexed_df=None, user_df=None):
+    def __init__(self, recipe_df=None, interactions_train_indexed_df=None, user_df=None):
         # Creating a sparse pivot table with users in rows and items in columns
         interactions_train_indexed_df = interactions_train_indexed_df.reset_index()
         users_items_pivot_matrix_df = interactions_train_indexed_df.pivot(index='user_id', columns='recipe_id', values='rating').fillna(0)
@@ -39,9 +39,7 @@ class CFRecommender:
 
         self.cf_predictions_df = cf_preds_df
         self.recipe_df = recipe_df
-        self.interactions_full_indexed_df = interactions_full_indexed_df
         self.interactions_train_indexed_df = interactions_train_indexed_df
-        self.interactions_test_indexed_df = interactions_test_indexed_df
         self.user_df = user_df
 
     def get_model_name(self):

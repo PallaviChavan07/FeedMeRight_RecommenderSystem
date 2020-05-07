@@ -1,16 +1,14 @@
 import pandas as pd
 
 class ModelEvaluator:
-    def __init__(self, recipe_df, interactions_full_indexed_df=None, interactions_train_indexed_df=None, interactions_test_indexed_df=None):
-        self.recipe_df = recipe_df
-        self.interactions_full_indexed_df = interactions_full_indexed_df
-        self.interactions_train_indexed_df = interactions_train_indexed_df
+    def __init__(self, interactions_test_indexed_df=None):
         self.interactions_test_indexed_df = interactions_test_indexed_df
 
     def get_recipes_interacted(self, user_id):
         # Get the user's data and merge in the information.
         try:
-            interacted_items = self.interactions_full_indexed_df.loc[user_id]
+            interacted_items = self.interactions_test_indexed_df.loc[user_id]
+            if type(interacted_items) != pd.DataFrame: interacted_items = interacted_items.to_frame().T
         except:
             interacted_items = None
         return interacted_items
@@ -19,8 +17,10 @@ class ModelEvaluator:
         users_recs_df = model.recommend_items(user_id, items_to_ignore=[], topn=10000000000)
         #print(user_id, " Size of users_recs_df: ", users_recs_df.shape)
 
-        if users_recs_df is None: return {'recall@5': 0, 'interacted_count': 0, 'precision@5': 0, 'accuracy@5': 0}
+        if users_recs_df is None: return {'recall@5': 0, 'interacted_count': 0, 'precision@5': 0, 'accuracy@5': 0, 'f1score@5': 0}
 
+        threshold = 0.5
+        if 'CB' in model.get_model_name(): threshold = 0.1
         ks = [5, 10, 20] #list of all ks we want to try
         recall = {} #create dictionaries
         precision = {}
@@ -32,42 +32,42 @@ class ModelEvaluator:
             user_top_k_recos = users_recs_df.head(k)
 
             # get only items with recStrength > 0.5 i.e threshold
-            user_top_k_recos = user_top_k_recos.loc[user_top_k_recos['recStrength'] >= 0.5]
+            user_top_k_recos = user_top_k_recos.loc[user_top_k_recos['recStrength'] >= threshold]
 
             # get recipes already interacted by user
             user_interact_recipes_df = self.get_recipes_interacted(user_id)
             # print("user_interact_recipes_df: ", len(user_interact_recipes_df), " for user_id ", user_id)
 
-            # filter out recipes with rating > 3.5 which is our threshold for good vs bad recipes
-            user_interated_relevant_df = user_interact_recipes_df.loc[user_interact_recipes_df['rating'] >= 3]
-            user_interated_irrelevant_df = user_interact_recipes_df.loc[user_interact_recipes_df['rating'] < 3]
-            # print("user_interated_relevant_df: ", len(user_interated_relevant_df))
+            if user_interact_recipes_df is not None:
+                # filter out recipes with rating > 3.5 which is our threshold for good vs bad recipes
+                user_interated_relevant_df = user_interact_recipes_df.loc[user_interact_recipes_df['rating'] >= 3]
+                user_interated_irrelevant_df = user_interact_recipes_df.loc[user_interact_recipes_df['rating'] < 3]
+                # print("user_interated_relevant_df: ", len(user_interated_relevant_df))
 
-            # merge top k recommended recipes with filtered user interacted recipes to get relevant recommended
-            relevant_and_reco_items_df = user_top_k_recos.merge(user_interated_relevant_df, how='inner', on='recipe_id')
-            # print("relevant_and_reco_items_df:\n", relevant_and_reco_items_df)
+                # merge top k recommended recipes with filtered user interacted recipes to get relevant recommended
+                relevant_and_reco_items_df = user_top_k_recos.merge(user_interated_relevant_df, how='inner', on='recipe_id')
+                # print("relevant_and_reco_items_df:\n", relevant_and_reco_items_df)
 
-            irrelevant_and_reco_items_df = user_top_k_recos.merge(user_interated_irrelevant_df, how='inner',on='recipe_id')
-            # user_top_k_recos_count = len(user_top_k_recos)
-            # p_recall = len(relevant_and_reco_items_df) / user_top_k_recos_count if user_top_k_recos_count != 0 else 1
-            # print("Pallavi dumb recall", p_recall)
+                irrelevant_and_reco_items_df = user_top_k_recos.merge(user_interated_irrelevant_df, how='inner', on='recipe_id')
+                # user_top_k_recos_count = len(user_top_k_recos)
+                # p_recall = len(relevant_and_reco_items_df) / user_top_k_recos_count if user_top_k_recos_count != 0 else 1
+                # print("Pallavi dumb recall", p_recall)
 
-            # Recall@K: Proportion of relevant items that are recommended
-            n_rel_and_rec_k = len(relevant_and_reco_items_df)  # TP
-            n_rel[k] = len(user_interated_relevant_df)
-            n_irrel_and_rec_k = len(irrelevant_and_reco_items_df)  # TN
-            recall[k] = n_rel_and_rec_k / n_rel[k] if n_rel[k] != 0 else 1
-            # print("amod yet to correct but dumb recall", a_recall)
+                # Recall@K: Proportion of relevant items that are recommended
+                n_rel_and_rec_k = len(relevant_and_reco_items_df)  # TP
+                n_rel[k] = len(user_interated_relevant_df)
+                n_irrel_and_rec_k = len(irrelevant_and_reco_items_df)  # TN
+                recall[k] = n_rel_and_rec_k / n_rel[k] if n_rel[k] != 0 else 1
+                # print("amod yet to correct but dumb recall", a_recall)
 
-            # Number of recommended items in top k (Whose score is higher than 0.5 (relevant))
-            n_rec_k = len(user_top_k_recos.loc[user_top_k_recos['recStrength'] >= 0.5])
-            # Precision@K: Proportion of recommended items that are relevant
-            precision[k] = n_rel_and_rec_k / n_rec_k if n_rec_k != 0 else 0
+                # Number of recommended items in top k (Whose score is higher than 0.5 (relevant))
+                n_rec_k = len(user_top_k_recos.loc[user_top_k_recos['recStrength'] >= threshold])
+                # Precision@K: Proportion of recommended items that are relevant
+                precision[k] = n_rel_and_rec_k / n_rec_k if n_rec_k != 0 else 0
 
-            accuracy[k] = (n_rel_and_rec_k + n_irrel_and_rec_k) / k
+                accuracy[k] = (n_rel_and_rec_k + n_irrel_and_rec_k) / k
 
-            f1score[k] = 2 * ((precision[k] * recall[k]) / (precision[k] + recall[k])) if (precision[k] + recall[k] > 0.0) else 0
-
+                f1score[k] = 2 * ((precision[k] * recall[k]) / (precision[k] + recall[k])) if (precision[k] + recall[k] > 0.0) else 0
 
         person_metrics = {'recall@5': recall[5], 'precision@5': precision[5], 'accuracy@5': accuracy[5], 'f1score@5': f1score[5],
                           'recall@10': recall[10], 'precision@10': precision[10], 'accuracy@10': accuracy[10], 'f1score@10': f1score[10],
@@ -103,13 +103,13 @@ class ModelEvaluator:
         global_accuracy_20 = detailed_results_df['accuracy@20'].sum() / len(detailed_results_df['accuracy@20'])
         global_f1score_20 = detailed_results_df['f1score@20'].sum() / len(detailed_results_df['f1score@20'])
 
-        # global_metrics = {'model': model.get_model_name(), 'recall@5': global_recall_5, 'precision@5': global_precision_5, 'accuracy@5': global_accuracy_5, 'f1score@5': global_f1score_5,
-        #                   'recall@10': global_recall_10, 'precision@10': global_precision_10, 'accuracy@10': global_accuracy_10, 'f1score@10': global_f1score_10,
-        #                   'recall@20': global_recall_20, 'precision@20': global_precision_20, 'accuracy@20': global_accuracy_20, 'f1score@20': global_f1score_20}
+        global_metrics = {'model': model.get_model_name(), 'recall@5': global_recall_5, 'precision@5': global_precision_5, 'accuracy@5': global_accuracy_5, 'f1score@5': global_f1score_5,
+                          'recall@10': global_recall_10, 'precision@10': global_precision_10, 'accuracy@10': global_accuracy_10, 'f1score@10': global_f1score_10,
+                          'recall@20': global_recall_20, 'precision@20': global_precision_20, 'accuracy@20': global_accuracy_20, 'f1score@20': global_f1score_20}
 
-        global_metrics = {'model': model.get_model_name(),
-                          'accuracy@5': global_accuracy_5, 'f1score@5': global_f1score_5,
-                          'accuracy@10': global_accuracy_10, 'f1score@10': global_f1score_10,
-                          'accuracy@20': global_accuracy_20, 'f1score@20': global_f1score_20}
+        # global_metrics = {'model': model.get_model_name(),
+        #                   'accuracy@5': global_accuracy_5, 'f1score@5': global_f1score_5,
+        #                   'accuracy@10': global_accuracy_10, 'f1score@10': global_f1score_10,
+        #                   'accuracy@20': global_accuracy_20, 'f1score@20': global_f1score_20}
 
         return global_metrics, detailed_results_df

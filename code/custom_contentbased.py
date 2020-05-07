@@ -11,7 +11,7 @@ from sklearn.preprocessing import MinMaxScaler
 
 ########################################## CONTENT BASED ##########################################
 class ContentBasedRecommender:
-    MODEL_NAME = 'ContentBased'
+    MODEL_NAME = 'CB'
     CB_SCORE_RATING_FACTOR = 4.0
     def __init__(self, recipe_df=None, interactions_full_indexed_df=None, user_df=None):
         # Trains a model whose vectors size is 5000, composed by the main unigrams and bigrams found in the corpus, ignoring stopwords
@@ -123,7 +123,7 @@ class ContentBasedRecommender:
 
         recommendations_df = recommendations_df.merge(self.recipe_df, how='left', left_on='recipe_id', right_on='recipe_id')[['recStrength', 'recipe_id', 'recipe_name', 'calories', 'diet_labels']]
         # convert similarity score to close to equivalent rating
-        recommendations_df['recStrength'] = (recommendations_df['recStrength'] * self.CB_SCORE_RATING_FACTOR) + 1.0
+        #recommendations_df['recStrength'] = (recommendations_df['recStrength'] * self.CB_SCORE_RATING_FACTOR) + 1.0
 
         recommendations_df = self.get_recommendation_for_user_calorie_count(recommendations_df, user_id)
         return recommendations_df
