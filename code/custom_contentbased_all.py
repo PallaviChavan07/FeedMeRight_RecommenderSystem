@@ -18,12 +18,12 @@ class ContentBasedRecommenderAll:
 
         # Trains a model whose vectors size is 5000, composed by the main unigrams and bigrams found in the corpus, ignoring stopwords
         vectorizer_in = TfidfVectorizer(analyzer='word', ngram_range=(1, 3), min_df=0.01, max_df=0.80, stop_words=stopwords.words('english'))
-        self.tfidf_matrix_in = vectorizer_in.fit_transform(recipe_df['ingredients'])
+        self.tfidf_matrix_in = vectorizer_in.fit_transform(recipe_df['clean_ingredients'].values.astype('U'))
         #vectorizer = TfidfVectorizer(analyzer='word', ngram_range=(1, 3), min_df=0.01, max_df=0.80, stop_words=stopwords.words('english'))
         #self.tfidf_matrix = vectorizer.fit_transform( recipe_df['cook_method'] + "" +recipe_df['ingredients'] + "" + recipe_df['diet_labels'])
-        vectorizer_ck = TfidfVectorizer(analyzer='word', ngram_range=(1, 1), stop_words=stopwords.words('english'))
+        vectorizer_ck = TfidfVectorizer(analyzer='word', ngram_range=(1, 1), min_df=0.01, max_df=0.80, stop_words=stopwords.words('english'))
         self.tfidf_matrix_ck = vectorizer_ck.fit_transform(recipe_df['cook_method'])
-        vectorizer_dl = TfidfVectorizer(analyzer='word', ngram_range=(1, 1), stop_words=stopwords.words('english'))
+        vectorizer_dl = TfidfVectorizer(analyzer='word', ngram_range=(1, 1), min_df=0.01, max_df=0.80, stop_words=stopwords.words('english'))
         self.tfidf_matrix_dl = vectorizer_dl.fit_transform(recipe_df['diet_labels'])
 
         self.recipe_ids = recipe_ids
@@ -32,6 +32,10 @@ class ContentBasedRecommenderAll:
         self.user_df = user_df
 
         self.user_profiles = self.build_users_profiles()
+
+        print("diet features== ", len(vectorizer_dl.get_feature_names()))
+        print("cook_tfidf features== ", len(vectorizer_ck.get_feature_names()))
+        print("ingred_tfidf features== ", len(vectorizer_in.get_feature_names()))
 
     def get_model_name(self):
         return self.MODEL_NAME

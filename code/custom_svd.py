@@ -7,12 +7,11 @@ from scipy.sparse.linalg import svds
 class CFRecommender:
     MODEL_NAME = 'Collaborative SVD Matrix'
     # The number of factors to factor the user-item matrix.
-    NUMBER_OF_FACTORS_MF = 50
+    NUMBER_OF_FACTORS_MF = 500
     def __init__(self, recipe_df=None, interactions_train_indexed_df=None, user_df=None):
         # Creating a sparse pivot table with users in rows and items in columns
         interactions_train_indexed_df = interactions_train_indexed_df.reset_index()
         users_items_pivot_matrix_df = interactions_train_indexed_df.pivot(index='user_id', columns='recipe_id', values='rating').fillna(0)
-        users_items_pivot_matrix_df.head(10)
 
         users_items_pivot_matrix = users_items_pivot_matrix_df
         #print(users_items_pivot_matrix[:10])
