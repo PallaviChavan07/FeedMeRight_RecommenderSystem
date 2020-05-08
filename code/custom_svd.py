@@ -5,9 +5,9 @@ from scipy.sparse.linalg import svds
 
 ########################################## COLLABORATIVE FILTERING BASED ##########################################
 class CFRecommender:
-    MODEL_NAME = 'Collaborative SVD Matrix'
+    MODEL_NAME = 'CF'
     # The number of factors to factor the user-item matrix.
-    NUMBER_OF_FACTORS_MF = 500
+    NUMBER_OF_FACTORS_MF = 2000
     def __init__(self, recipe_df=None, interactions_train_indexed_df=None, user_df=None):
         # Creating a sparse pivot table with users in rows and items in columns
         interactions_train_indexed_df = interactions_train_indexed_df.reset_index()
