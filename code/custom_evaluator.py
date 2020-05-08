@@ -19,8 +19,8 @@ class ModelEvaluator:
 
         if users_recs_df is None: return {'recall@5': 0, 'interacted_count': 0, 'precision@5': 0, 'accuracy@5': 0, 'f1score@5': 0}
 
-        threshold = 0.1
-        if 'CF' in model.get_model_name(): threshold = 0.5
+        threshold = 0.5
+        #if 'CF' in model.get_model_name(): threshold = 0.5
         ks = [5, 10, 20] #list of all ks we want to try
         recall = {} #create dictionaries
         precision = {}
