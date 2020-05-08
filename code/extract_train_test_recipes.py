@@ -14,6 +14,9 @@ nltk.download(['stopwords','wordnet'])
 nltk.download('punkt')
 from nltk.stem.porter import PorterStemmer
 from nltk.corpus import stopwords
+import re
+stop_words = stopwords.words('english')
+import spacy
 
 pd.set_option("display.max_rows", None, "display.max_columns", None)
 train_ratings_df = pd.read_csv(os.path.realpath('../data/original/core-data-train_rating.csv'))
@@ -147,12 +150,20 @@ def get_clean_ingredients(core_recipe_df):
     # create a list for text data
     # data = df.ingredients.values.tolist()
 
-    # self-define stopwords
-    recipe_stopwords = ['slice', 'large', 'diced', 'stock', 'taste', 'leave', 'powder', 'sliced', 'fresh', 'low', 'fat','whole', 'purpose', 'mix', 'ripe', 'medium', 'raw', 'coarse', 'style', 'active', 'dry','ground','white', 'heart', 'piece', 'crushed', 'cut', 'minute', 'pocket', 'shredded', 'optional', 'cube',
-                        'hour', 'bag', 'baby', 'seeded', 'small', 'clove', 'country', 'leaf', 'dressing', 'center','fillet','sea', 'chunk', 'light', 'food', 'head', 'container', 'link', 'frozen', 'can', 'cooked',
-                        'stalk','regular', 'dusting', 'heavy', 'round', 'rinsed', 'thawed', 'jar', 'solid', 'creamy', 'z',
-                        'fluid','uncooked', 'sheet', 'strip', 'short', 'soft', 'mixed', 'blue', 'flake', 'warm', 'unbleached',
-                        'sun','old', 'topping', 'wedge', 'thick', 'lean', 'extra', 'meal', 'preserve', 'mild', 'half','crosswise',
+    recipe_stopwords = ['slice', 'large', 'diced', 'stock', 'taste', 'leave', 'powder', 'sliced', 'fresh', 'low', 'fat',
+                        'whole', 'purpose', 'mix', 'ripe', 'medium', 'raw', 'coarse', 'style', 'active', 'dry',
+                        'ground',
+                        'white', 'heart', 'piece', 'crushed', 'cut', 'minute', 'pocket', 'shredded', 'optional', 'cube',
+                        'hour', 'bag', 'baby', 'seeded', 'small', 'clove', 'country', 'leaf', 'dressing', 'center',
+                        'fillet',
+                        'sea', 'chunk', 'light', 'food', 'head', 'container', 'link', 'frozen', 'can', 'cooked',
+                        'stalk',
+                        'regular', 'dusting', 'heavy', 'round', 'rinsed', 'thawed', 'jar', 'solid', 'creamy', 'z',
+                        'fluid',
+                        'uncooked', 'sheet', 'strip', 'short', 'soft', 'mixed', 'blue', 'flake', 'warm', 'unbleached',
+                        'sun',
+                        'old', 'topping', 'wedge', 'thick', 'lean', 'extra', 'meal', 'preserve', 'mild', 'half',
+                        'crosswise',
                         'new', 'seasoning', 'kidney', 'black', 'green', 'red', 'yellow', 'white', 'unpeeled', 'boiling',
                         'amount', 'cold', 'snow', 'cluster', 'necessary', 'firm', 'soda', 'cubed', 'temperature',
                         'deep',
@@ -173,29 +184,60 @@ def get_clean_ingredients(core_recipe_df):
                         'diced', 'fluid', 'meal', 'preserve', 'seasoning', 'bottle', 'box', 'split', 'flavor',
                         'lengthwise',
                         'flavoring', 'square', 'size', 'at_room', 'grade', 'shape', 'cuisine', 'hot', 'water', 'salt']
+    # remove units
+    units = ['spoon', 'pound', 'cup', 'quart', 'ounce', 'pint', 'degree', 'dash', 'pinch', 'pack', 'halve', 'bunch',
+             'inch']
+
+    # keep only noun and adj
+    def lemmatization(texts, allowed_postags=['NOUN', 'ADJ']):
+        texts_out = []
+        for sent in texts:
+            doc = nlp(' '.join(sent))
+            texts_out.append([token.lemma_ for token in doc if token.pos_ in allowed_postags])
+            # word_lst = []
+            # for word in sent : word_lst.append(lemma.lemmatize(word))
+            # texts_out.append(word_lst)
+        return texts_out
+
+    # initialize spacy 'en' model, keeping only tagger component
+    nlp = spacy.load('en_core_web_sm', disable=['parser', 'ner'])
 
     tokenized_ingredients_lst = []
     for data in ingredients_lst:
-        #print("data before splitting = ", data)
+        # remove number and punctuation
+
+        # print("data before splitting = ", data)
         data = data.split("^")
-        #print("data after splitting = ", data)
+        data = [re.sub(r'[^a-zA-Z]', ' ', sent.lower()) for sent in data]
+        for unit in units:
+            expre = re.compile('\w*' + unit + '\w*')
+            data = [re.sub(expre, '', sent).strip() for sent in data]
+        # remove duplicated whitespace
+        data = [' '.join(sent.split()) for sent in data]
+        # print("data after splitting = ", data)
         ingredstr = ""
         for ingred in data:
             ingredstr += " " + ingred
         ingredstr = ingredstr.strip().lower()
-        #print("ingredstr = ", ingredstr)
+        # print("ingredstr = ",ingredstr)
         # function to split text into word
         tokens = nltk.word_tokenize(ingredstr)
         # nltk.download('stopwords')
-        #print("After tokenization", tokens)
+        # print("After tokenization", tokens)
         tokenized_ingredients_lst.append(tokens)
         # print("tokenized_ingredients_lst = ", tokenized_ingredients_lst)
 
         # porter = nltk.PorterStemmer()
         # stemmed = [porter.stem(word) for word in tokens]
-        # remove self-defined stopwords
-    data_clean = [[word for word in doc if word not in recipe_stopwords] for doc in tokenized_ingredients_lst]
-    #print("data_clean[0] = ", data_clean)
+    data_nonstop = [[word for word in doc if word not in stop_words] for doc in tokenized_ingredients_lst]
+    #print("\n data_nonstop = ", data_nonstop)
+    # initialize spacy 'en' model, keeping only tagger component
+    # nlp = spacy.load('en', disable=['parser', 'ner'])
+    # lemmatize , allowed_postags=['NOUN', 'ADJ']
+    data_lemmatized = lemmatization(data_nonstop)
+    #print("\n data_lemmatized = ", data_lemmatized)
+    data_clean = [[word for word in doc if word not in recipe_stopwords] for doc in data_lemmatized]
+    #print("\n data_clean[0] = ", data_clean)
 
     clean_ingredients_list = []
     for ingred_lst in data_clean:
