@@ -22,7 +22,7 @@ if len(sys.argv) > 1: isEval = sys.argv[1]
 #data
 recipe_df = pd.read_csv(os.path.realpath('../data/clean/recipes.csv'))
 rating_df = pd.read_csv(os.path.realpath('../data/clean/ratings.csv'))
-user_df = pd.read_csv(os.path.realpath('../data/clean/users.csv'))
+user_df = pd.read_csv(os.path.realpath('../data/clean/users_v1.csv'))
 
 #user_df = user_df.head(150)
 # valid_users_interaction_df is a subset of rating_df
