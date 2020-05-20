@@ -24,7 +24,7 @@ recipe_df = pd.read_csv(os.path.realpath('../data/clean/recipes.csv'))
 rating_df = pd.read_csv(os.path.realpath('../data/clean/ratings.csv'))
 user_df = pd.read_csv(os.path.realpath('../data/clean/users_v1.csv'))
 
-#user_df = user_df.head(150)
+user_df = user_df.tail(10000)
 # valid_users_interaction_df is a subset of rating_df
 valid_users_interaction_df = pd.merge(rating_df, user_df, on='user_id', how='inner')
 merged_df = pd.merge(recipe_df, valid_users_interaction_df, on='recipe_id', how='inner')
