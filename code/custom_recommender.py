@@ -9,7 +9,7 @@ start_time = time.time()
 isNewUser = False
 newuser_cal_count = 1000
 REC_FOR_USER_ID = 0
-list_of_cols_to_display = ['recipe_name', 'calories', 'diet_labels']
+list_of_cols_to_display = ['recipe_name', 'calories', 'diet_labels', 'recStrength']
 if len(sys.argv) > 1:
     newuser_cal_count = sys.argv[0]
     isNewUser = sys.argv[1]
