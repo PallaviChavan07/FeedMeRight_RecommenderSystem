@@ -46,7 +46,8 @@ class HybridRecommender:
         recs_df['recStrength'] = (recs_df['recStrengthCB'] * self.CB_WEIGHT) + (recs_df['recStrengthCF'] * self.CF_WEIGHT)
 
         # Sorting recommendations by hybrid score
-        recommendations_df = recs_df.sort_values('recStrength', ascending=False).head(topn)
+        recommendations_df = recs_df.sort_values('recStrength', ascending=False)
         recommendations_df = recommendations_df.merge(self.recipe_df, how='left', left_on='recipe_id', right_on='recipe_id')[['recStrength', 'recipe_id', 'recipe_name', 'calories', 'diet_labels']]
         recommendations_df = self.get_recommendation_for_user_calorie_count(recommendations_df, user_id)
-        return recommendations_df
+        recommendations_df = recommendations_df.reset_index()
+        return recommendations_df.head(topn)

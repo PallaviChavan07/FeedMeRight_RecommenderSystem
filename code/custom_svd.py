@@ -64,7 +64,8 @@ class CFRecommender:
             return None
 
         # Recommend the highest predicted rating movies that the user hasn't seen yet.
-        recommendations_df = sorted_user_predictions[~sorted_user_predictions['recipe_id'].isin(items_to_ignore)].sort_values('recStrength', ascending=False).head(topn)
+        recommendations_df = sorted_user_predictions[~sorted_user_predictions['recipe_id'].isin(items_to_ignore)].sort_values('recStrength', ascending=False)
         recommendations_df = recommendations_df.merge(self.recipe_df, how='left', left_on='recipe_id', right_on='recipe_id')[['recStrength', 'recipe_id', 'recipe_name', 'calories', 'diet_labels']]
         recommendations_df = self.get_recommendation_for_user_calorie_count(recommendations_df, user_id)
-        return recommendations_df
+        recommendations_df = recommendations_df.reset_index()
+        return recommendations_df.head(topn)
