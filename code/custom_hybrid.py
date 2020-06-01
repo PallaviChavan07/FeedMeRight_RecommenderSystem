@@ -28,13 +28,13 @@ class HybridRecommender:
     def recommend_items(self, user_id, items_to_ignore=[], topn=10):
         # Getting the top-1000 Content-based filtering recommendations
         try:
-            cb_recs_df = self.cb_rec_model.recommend_items(user_id, items_to_ignore=items_to_ignore, topn=1000).rename(columns={'recStrength': 'recStrengthCB'})
+            cb_recs_df = self.cb_rec_model.recommend_items(user_id, items_to_ignore=items_to_ignore, topn=topn).rename(columns={'recStrength': 'recStrengthCB'})
         except:
             return None
 
         # Getting the top-1000 Collaborative filtering recommendations
         try:
-            cf_recs_df = self.cf_rec_model.recommend_items(user_id, items_to_ignore=items_to_ignore, topn=1000).rename(columns={'recStrength': 'recStrengthCF'})
+            cf_recs_df = self.cf_rec_model.recommend_items(user_id, items_to_ignore=items_to_ignore, topn=topn).rename(columns={'recStrength': 'recStrengthCF'})
         except:
             return None
 
