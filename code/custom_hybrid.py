@@ -2,7 +2,7 @@
 class HybridRecommender:
     MODEL_NAME = 'Hybrid'
     CB_WEIGHT = 1
-    CF_WEIGHT = 8
+    CF_WEIGHT = 7
 
     def __init__(self, cb_rec_model, cf_rec_model, recipe_df, user_df):
         self.cb_rec_model = cb_rec_model
