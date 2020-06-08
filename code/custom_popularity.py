@@ -35,6 +35,7 @@ class PopularityRecommender:
         recommendations_df.drop(recommendations_df.index, inplace=True)
         combined_frame = [balanced_df, highprotein_df, highfiber_df, lowcarb_df, lowfat_df, lowsodium_df]
         recommendations_df = pd.concat(combined_frame)
-        recommendations_df = recommendations_df.sort_values('rating', ascending=False).head(topn)[['recipe_id', 'recipe_name', 'calories', 'diet_labels']]
+        recommendations_df = recommendations_df.sort_values('rating', ascending=False)
+        recommendations_df = recommendations_df.rename(columns={'rating': 'recStrength'}).head(topn)[['recStrength', 'recipe_id', 'recipe_name', 'calories', 'diet_labels']]
 
         return recommendations_df
